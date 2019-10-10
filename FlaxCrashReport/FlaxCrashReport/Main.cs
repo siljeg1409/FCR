@@ -47,22 +47,5 @@ namespace FlaxCrashReport
             SendCrashData();
         }
 
-        private void SendCrashData()
-        {
-            //Collects crash data from windows log, creates and sends email
-        }
-
-        //private bool CheckAppStatus()
-        //{
-        //    //check if app crashed
-        //    return true;
-
-        //}
-
-        //private void ReadSettings()
-        //{
-        //    //Read data from json and fill global data
-        //}
-
     }
 }

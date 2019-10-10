@@ -1,4 +1,7 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
+using System;
+using System.IO;
 using System.Net;
 using System.Net.Mail;
 
@@ -11,16 +14,13 @@ namespace FlaxCrashReport.Logic
         {
         }
 
-        public bool SendEmail()
+        public bool SendEmail(string subject, string body)
         {
-            // foreach json in C:\FLAX\FCR\Reports\ ....JSON(s)
             try
             {
-                var fromAddress = new MailAddress(Data.SGlobal.Instance.Settings.EmailFrom, "Flax Crash Report Service");
-                var toAddress = new MailAddress(Data.SGlobal.Instance.Settings.EmailTo, "FCR Report Center");
-                string fromPassword = Data.SGlobal.Instance.Settings.Password;
-                string subject = "Crash report from " + Data.SGlobal.Instance.UserName;
-                string body = GetCrashData();
+                var fromAddress = new MailAddress(Data.SGeneral.Instance.EmailFrom, "FCR Service");
+                var toAddress = new MailAddress(Data.SGeneral.Instance.EmailTo, "FCR Report Center");
+                string fromPassword = Data.SGeneral.Instance.Password;
 
                 var smtp = new SmtpClient
                 {
@@ -34,31 +34,55 @@ namespace FlaxCrashReport.Logic
                 using (var message = new MailMessage(fromAddress, toAddress)
                 {
                     Subject = subject,
-                    Body = body
+                    Body = $"Date: { DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
+                    $"Machine: {Data.SGeneral.Instance.MachineName} {Environment.NewLine}" +
+                    $"Username: {Data.SGeneral.Instance.UserName} {Environment.NewLine}" + 
+                    $"------------------ LOG DATA ------------------" +
+                    $"{body}" +
+                    $"------------------ LOG DATA ------------------" 
+
                 })
                 {
                     smtp.Send(message);
                 }
 
-                //delete current JSON -> continue
             }
-            catch (Exception)
+            catch (Exception e)
             {
-
-                //IDK what to do here :/
+                GenerateJSON(e.StackTrace);
+                return false;
             }
            
 
             return true;
         }
 
-        private string GetCrashData()
+        private void GenerateJSON(string msg = "")
         {
-            string ret = "Default information!";
+            Data.JsonData jd = new Data.JsonData
+            {
+                MachineName = Data.SGeneral.Instance.MachineName,
+                UserName = Data.SGeneral.Instance.UserName,
+                Date = DateTime.Now,
+                Subject = "CRASH_REPORT: " + Data.SGeneral.Instance.Counter++,
+                Body = msg == "" ? GetBodyData() : msg
+        };
 
-            //need to make email body from windows log data about current app
+        var serializerSettings = new JsonSerializerSettings();
+        serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+        var json = JsonConvert.SerializeObject(jd, serializerSettings);
+        File.WriteAllText(@"C:\FLAX\FCR\Reports\Report_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".json", json);
+        }
 
-            return ret;
+        private string GetBodyData()
+        {
+            throw new NotImplementedException();
+        }
+
+        private void GetCrashData()
+        {
+           
+
         }
 
         public bool CheckAppStatus()
