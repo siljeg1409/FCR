@@ -22,6 +22,7 @@ namespace FlaxCrashReport.Data
         private string _emailFrom;
         #endregion
 
+        [JsonProperty("FCR_EmailFrom")]
         public string EmailFrom
         {
             get { return _emailFrom; }
@@ -34,30 +35,7 @@ namespace FlaxCrashReport.Data
             }
         }
 
-        public string EmailTo
-        {
-            get { return _emailTo; }
-            set
-            {
-                if (value != _emailTo)
-                {
-                    _emailTo = value;
-                }
-            }
-        }
-
-        public string Password
-        {
-            get { return _passwordFrom; }
-            set
-            {
-                if (value != _passwordFrom)
-                {
-                    _passwordFrom = value;
-                }
-            }
-        }
-
+        [JsonProperty("Machine")]
         public string MachineName
         {
             get { return _machinename; }
@@ -70,6 +48,7 @@ namespace FlaxCrashReport.Data
             }
         }
 
+        [JsonProperty("User")]
         public string UserName
         {
             get { return _username; }
@@ -82,6 +61,33 @@ namespace FlaxCrashReport.Data
             }
         }
 
+        [JsonProperty("FCR_EmailTo")]
+        public string EmailTo
+        {
+            get { return _emailTo; }
+            set
+            {
+                if (value != _emailTo)
+                {
+                    _emailTo = value;
+                }
+            }
+        }
+
+        [JsonProperty("FCR_Password")]
+        public string Password
+        {
+            get { return _passwordFrom; }
+            set
+            {
+                if (value != _passwordFrom)
+                {
+                    _passwordFrom = value;
+                }
+            }
+        }
+
+        [JsonProperty("FCR_Counter")]
         public int Counter
         {
             get { return _counter; }
@@ -119,7 +125,7 @@ namespace FlaxCrashReport.Data
 
         private static SGeneral GetSettings()
         {
-            string filepath = @"C:\FLAX\FCR\Settings\settings.json";
+            string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
             if(!File.Exists(filepath))
             {
                 var o = new Logic.MainLogic();

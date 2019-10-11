@@ -79,11 +79,6 @@ namespace FlaxCrashReport.Logic
             throw new NotImplementedException();
         }
 
-        private void GetCrashData()
-        {
-           
-
-        }
 
         public bool CheckAppStatus()
         {
