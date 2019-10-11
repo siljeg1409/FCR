@@ -44,7 +44,7 @@ namespace FlaxCrashReport
         private void OnElapsedTime(object source, ElapsedEventArgs e)
         {
             if (ml.CheckAppStatus()) return;
-            SendCrashData();
+            ml.SendCrashData();
         }
 
     }

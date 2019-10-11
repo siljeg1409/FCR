@@ -20,6 +20,7 @@ namespace FlaxCrashReport.Data
         private string _passwordFrom;
         private string _emailTo;
         private string _emailFrom;
+        private DateTime _lastcrash;
         #endregion
 
         [JsonProperty("FCR_EmailFrom")]
@@ -96,6 +97,19 @@ namespace FlaxCrashReport.Data
                 if (value != _counter)
                 {
                     _counter = value;
+                }
+            }
+        }
+
+        [JsonProperty("FCR_LastCrash")]
+        public DateTime LastCrash
+        {
+            get { return _lastcrash; }
+            set
+            {
+                if (value != _lastcrash)
+                {
+                    _lastcrash = value;
                 }
             }
         }

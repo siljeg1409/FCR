@@ -1,9 +1,12 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Net.Mail;
+using System.Linq;
+using Newtonsoft.Json.Linq;
 
 namespace FlaxCrashReport.Logic
 {
@@ -49,7 +52,7 @@ namespace FlaxCrashReport.Logic
             }
             catch (Exception e)
             {
-                GenerateJSON(e.StackTrace);
+                GenerateJSON("SERVICE_SENDEMAIL_ERROR", e.StackTrace);
                 return false;
             }
            
@@ -57,35 +60,90 @@ namespace FlaxCrashReport.Logic
             return true;
         }
 
-        private void GenerateJSON(string msg = "")
+        private void GenerateJSON(string subject = "", string msg = "", bool recusion = false)
         {
-            Data.JsonData jd = new Data.JsonData
+            try
             {
-                MachineName = Data.SGeneral.Instance.MachineName,
-                UserName = Data.SGeneral.Instance.UserName,
-                Date = DateTime.Now,
-                Subject = "CRASH_REPORT: " + Data.SGeneral.Instance.Counter++,
-                Body = msg == "" ? GetBodyData() : msg
-        };
+                EventLogEntry elg = GetLogData();
+                DateTime crashdate = elg.TimeGenerated == null ? DateTime.Now : elg.TimeGenerated;
 
-        var serializerSettings = new JsonSerializerSettings();
-        serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
-        var json = JsonConvert.SerializeObject(jd, serializerSettings);
-        File.WriteAllText(@"C:\FLAX\FCR\Reports\Report_" + DateTime.Now.ToString("yyyyMMddHHmmss") + ".json", json);
+                Data.JsonData jd = new Data.JsonData
+                {
+                    MachineName = Data.SGeneral.Instance.MachineName,
+                    UserName = Data.SGeneral.Instance.UserName,
+                    Date = crashdate,
+                    Subject = subject == "" ? "CRASH_REPORT: " + Data.SGeneral.Instance.Counter++ : subject,
+                    Body = msg == "" ? elg.Message.ToString() : msg
+                };
+
+                var serializerSettings = new JsonSerializerSettings();
+                serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                var json = JsonConvert.SerializeObject(jd, serializerSettings);
+                File.WriteAllText(@"C:\FLAX\FCR\Reports\Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json", json);
+                UpdateJSON(crashdate);
+            }
+            catch (Exception e)
+            {
+                if (recusion) return;
+                GenerateJSON("SERVICE_WRITE_JSON_REPORT_ERROR", e.StackTrace, true);
+            }
+           
         }
 
-        private string GetBodyData()
+        private EventLogEntry GetLogData()
         {
-            throw new NotImplementedException();
+            EventLog el = new EventLog("Application");
+            try
+            {
+                return (from EventLogEntry elog in el.Entries
+                              where (elog.Message.ToString().StartsWith("Application: WindowsFormsApp1.exe"))
+                              && elog.TimeGenerated > Data.SGeneral.Instance.LastCrash
+                              orderby elog.TimeGenerated descending
+                              select elog).First();
+            }
+            catch (InvalidOperationException e)
+            {
+                GenerateJSON("SERVICE_READ_LOG_ENTRY_ERROR", e.StackTrace);
+                return null;
+            }
         }
 
 
         public bool CheckAppStatus()
         {
-
-
+            Process[] pname = Process.GetProcessesByName("Users");
+            if (pname.Length == 0) return false;
             return true;
         }
 
+        public void SendCrashData()
+        {
+            GenerateJSON();
+
+            foreach (var file in Directory.GetFiles(@"C:\FLAX\FCR\Reports\", "*.json"))
+            {
+                if (!File.Exists(file)) continue;
+                JObject o = JObject.Parse(File.ReadAllText(file));
+                Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
+                SendEmail(s.Subject, s.Body);
+            }
+        }
+
+        private void UpdateJSON(DateTime d)
+        {
+            string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
+            if (!File.Exists(filepath))
+            {
+                var ml = new Logic.MainLogic();
+                ml.SendEmail("NO_SETTINGS_FILE", "");
+            }
+
+            JObject o = JObject.Parse(File.ReadAllText(filepath));
+            o["FCR_Counter"] = (int)o["FCR_Counter"] + 1;
+            o["FCR_LastCrash"] = d;
+            string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
+            File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", output);
+
+        }
     }
 }
