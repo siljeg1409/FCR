@@ -65,7 +65,8 @@ namespace FlaxCrashReport.Logic
             try
             {
                 EventLogEntry elg = GetLogData();
-                DateTime crashdate = elg.TimeGenerated == null ? DateTime.Now : elg.TimeGenerated;
+                if (elg == null && subject != "") return;
+                DateTime crashdate = elg.TimeGenerated;
 
                 Data.JsonData jd = new Data.JsonData
                 {
@@ -96,8 +97,9 @@ namespace FlaxCrashReport.Logic
             try
             {
                 return (from EventLogEntry elog in el.Entries
-                              where (elog.Message.ToString().StartsWith("Application: WindowsFormsApp1.exe"))
+                              where (elog.Message.ToString().StartsWith("Application: Users.exe"))
                               && elog.TimeGenerated > Data.SGeneral.Instance.LastCrash
+                              & elog.EntryType == EventLogEntryType.Error
                               orderby elog.TimeGenerated descending
                               select elog).First();
             }
