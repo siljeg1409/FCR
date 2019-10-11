@@ -126,7 +126,15 @@ namespace FlaxCrashReport.Logic
                 JObject o = JObject.Parse(File.ReadAllText(file));
                 Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
                 SendEmail(s.Subject, s.Body);
+                MoveToArchive(file);
             }
+        }
+
+        private void MoveToArchive(string file)
+        {
+            string archiveFolder = @"C:\FLAX\FCR\Archive\";
+            if (!Directory.Exists(archiveFolder)) Directory.CreateDirectory(archiveFolder);
+            File.Move(file, archiveFolder + Path.GetFileName(file));
         }
 
         private void UpdateJSON(DateTime d)

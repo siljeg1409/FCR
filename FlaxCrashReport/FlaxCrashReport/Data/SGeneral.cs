@@ -1,12 +1,7 @@
 ﻿using Newtonsoft.Json;
-using Newtonsoft.Json.Converters;
 using Newtonsoft.Json.Linq;
 using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlaxCrashReport.Data
 {
@@ -144,9 +139,10 @@ namespace FlaxCrashReport.Data
             {
                 var o = new Logic.MainLogic();
                 o.SendEmail("NO_SETTINGS_FILE", "");
+                if (!Directory.Exists(@"C:\FLAX\Settings\")) Directory.CreateDirectory(@"C:\FLAX\Settings\");
             }
             JObject o1 = JObject.Parse(File.ReadAllText(filepath));
-            SGeneral s = Newtonsoft.Json.JsonConvert.DeserializeObject<SGeneral>(o1.ToString());
+            SGeneral s = JsonConvert.DeserializeObject<SGeneral>(o1.ToString());
             return s;
         }
 
