@@ -1,5 +1,6 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Newtonsoft.Json.Serialization;
 using System;
 using System.IO;
 
@@ -9,105 +10,21 @@ namespace FlaxCrashReport.Data
     {
 
         #region Private members
-        private int _counter;
-        private string _machinename;
-        private string _username;
-        private string _passwordFrom;
-        private string _emailTo;
-        private string _emailFrom;
-        private DateTime _lastcrash;
+        private static GlobalSettings _gs;
         #endregion
 
-        [JsonProperty("FCR_EmailFrom")]
-        public string EmailFrom
+        public GlobalSettings Settings
         {
-            get { return _emailFrom; }
+            get { return _gs; }
             set
             {
-                if (value != _emailFrom)
+                if (value != _gs)
                 {
-                    _emailFrom = value;
+                    _gs = value;
                 }
             }
         }
 
-        [JsonProperty("Machine")]
-        public string MachineName
-        {
-            get { return _machinename; }
-            set
-            {
-                if (value != _machinename)
-                {
-                    _machinename = value;
-                }
-            }
-        }
-
-        [JsonProperty("User")]
-        public string UserName
-        {
-            get { return _username; }
-            set
-            {
-                if (value != _username)
-                {
-                    _username = value;
-                }
-            }
-        }
-
-        [JsonProperty("FCR_EmailTo")]
-        public string EmailTo
-        {
-            get { return _emailTo; }
-            set
-            {
-                if (value != _emailTo)
-                {
-                    _emailTo = value;
-                }
-            }
-        }
-
-        [JsonProperty("FCR_Password")]
-        public string Password
-        {
-            get { return _passwordFrom; }
-            set
-            {
-                if (value != _passwordFrom)
-                {
-                    _passwordFrom = value;
-                }
-            }
-        }
-
-        [JsonProperty("FCR_Counter")]
-        public int Counter
-        {
-            get { return _counter; }
-            set
-            {
-                if (value != _counter)
-                {
-                    _counter = value;
-                }
-            }
-        }
-
-        [JsonProperty("FCR_LastCrash")]
-        public DateTime LastCrash
-        {
-            get { return _lastcrash; }
-            set
-            {
-                if (value != _lastcrash)
-                {
-                    _lastcrash = value;
-                }
-            }
-        }
 
         SGeneral()
         {
@@ -124,7 +41,8 @@ namespace FlaxCrashReport.Data
                     {
                         if (instance == null)
                         {
-                            instance = GetSettings();
+                            instance = new SGeneral();
+                            instance.Settings = GetSettings();
                         }
                     }
                 }
@@ -132,20 +50,29 @@ namespace FlaxCrashReport.Data
             }
         }
 
-        private static SGeneral GetSettings()
+        private static GlobalSettings GetSettings()
         {
             string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-            if(!File.Exists(filepath))
-            {
-                var o = new Logic.MainLogic();
-                o.SendEmail("NO_SETTINGS_FILE", "");
-                if (!Directory.Exists(@"C:\FLAX\Settings\")) Directory.CreateDirectory(@"C:\FLAX\Settings\");
-            }
+            checkGlobalSettings(filepath);
             JObject o1 = JObject.Parse(File.ReadAllText(filepath));
-            SGeneral s = JsonConvert.DeserializeObject<SGeneral>(o1.ToString());
-            return s;
+            GlobalSettings gs = new GlobalSettings();
+            return JsonConvert.DeserializeObject<GlobalSettings>(o1.ToString());
         }
 
+        private static void checkGlobalSettings(string filepath)
+        {
+            if (File.Exists(filepath)) return;
+            if (!Directory.Exists(@"C:\FLAX\Settings\")) Directory.CreateDirectory(@"C:\FLAX\Settings\"); 
+            GlobalSettings gs = new GlobalSettings
+            {
+                MachineName = Environment.MachineName,
+                UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name,
+                LastCrash = new DateTime(1990, 9, 14),
+                Counter = 1,
+            };
+            var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
+            File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
+        }
       
     }
 }

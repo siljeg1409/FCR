@@ -7,6 +7,7 @@ using System.Net;
 using System.Net.Mail;
 using System.Linq;
 using Newtonsoft.Json.Linq;
+using System.Collections.Generic;
 
 namespace FlaxCrashReport.Logic
 {
@@ -17,13 +18,14 @@ namespace FlaxCrashReport.Logic
         {
         }
 
-        public bool SendEmail(string subject, string body)
+        public bool SendEmail(string subject, string body = "")
         {
             try
             {
-                var fromAddress = new MailAddress(Data.SGeneral.Instance.EmailFrom, "FCR Service");
-                var toAddress = new MailAddress(Data.SGeneral.Instance.EmailTo, "FCR Report Center");
-                string fromPassword = Data.SGeneral.Instance.Password;
+                var fromAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailFrom, "FCR Service");
+                var toAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailTo, "FCR Report Center");
+                string fromPassword = Data.SGeneral.Instance.Settings.Password;
+
 
                 var smtp = new SmtpClient
                 {
@@ -37,11 +39,11 @@ namespace FlaxCrashReport.Logic
                 using (var message = new MailMessage(fromAddress, toAddress)
                 {
                     Subject = subject,
-                    Body = $"Date: { DateTime.Now.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                    $"Machine: {Data.SGeneral.Instance.MachineName} {Environment.NewLine}" +
-                    $"Username: {Data.SGeneral.Instance.UserName} {Environment.NewLine}" + 
-                    $"------------------ LOG DATA ------------------" +
-                    $"{body}" +
+                    Body = $"Crash time: {Data.SGeneral.Instance.Settings.LastCrash.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
+                    $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
+                    $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" + 
+                    $"------------------ LOG DATA ------------------ {Environment.NewLine}" + 
+                    $"{body} {Environment.NewLine}" +
                     $"------------------ LOG DATA ------------------" 
 
                 })
@@ -50,79 +52,58 @@ namespace FlaxCrashReport.Logic
                 }
 
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                GenerateJSON("SERVICE_SENDEMAIL_ERROR", e.StackTrace);
+                //this is where i must have try-catch, or i will have problems with spamming and recursion
                 return false;
             }
-           
 
             return true;
         }
 
-        private void GenerateJSON(string subject = "", string msg = "", bool recusion = false)
+        private void GenerateJSONs()
         {
-            try
+            DateTime crashdate = DateTime.Now;
+            List<EventLogEntry> elgs = GetLogData();
+            if (elgs == null) return;
+            foreach ( EventLogEntry e in elgs)
             {
-                EventLogEntry elg = GetLogData();
-                if (elg == null && subject != "") return;
-                DateTime crashdate = elg.TimeGenerated;
-
+                crashdate = e.TimeGenerated;
                 Data.JsonData jd = new Data.JsonData
                 {
-                    MachineName = Data.SGeneral.Instance.MachineName,
-                    UserName = Data.SGeneral.Instance.UserName,
+                    MachineName = Data.SGeneral.Instance.Settings.MachineName,
+                    UserName = Data.SGeneral.Instance.Settings.UserName,
                     Date = crashdate,
-                    Subject = subject == "" ? "CRASH_REPORT: " + Data.SGeneral.Instance.Counter++ : subject,
-                    Body = msg == "" ? elg.Message.ToString() : msg
+                    Subject = "CRASH_REPORT: " + Data.SGeneral.Instance.Settings.Counter++,
+                    Body = e.Message.ToString()
                 };
 
                 var serializerSettings = new JsonSerializerSettings();
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
                 File.WriteAllText(@"C:\FLAX\FCR\Reports\Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json", json);
-                UpdateJSON(crashdate);
             }
-            catch (Exception e)
-            {
-                if (recusion) return;
-                GenerateJSON("SERVICE_WRITE_JSON_REPORT_ERROR", e.StackTrace, true);
-            }
-           
+            UpdateJSON(crashdate);
         }
 
-        private EventLogEntry GetLogData()
+
+        private List<EventLogEntry> GetLogData()
         {
             EventLog el = new EventLog("Application");
-            try
-            {
-                return (from EventLogEntry elog in el.Entries
-                              where (elog.Message.ToString().StartsWith("Application: Users.exe"))
-                              && elog.TimeGenerated > Data.SGeneral.Instance.LastCrash
-                              & elog.EntryType == EventLogEntryType.Error
-                              orderby elog.TimeGenerated descending
-                              select elog).First();
-            }
-            catch (InvalidOperationException e)
-            {
-                GenerateJSON("SERVICE_READ_LOG_ENTRY_ERROR", e.StackTrace);
-                return null;
-            }
-        }
-
-
-        public bool CheckAppStatus()
-        {
-            Process[] pname = Process.GetProcessesByName("Users");
-            if (pname.Length == 0) return false;
-            return true;
+            return  (from EventLogEntry elog in el.Entries
+                            where (elog.Message.ToString().StartsWith("Application: Users.exe"))
+                            && elog.TimeGenerated > Data.SGeneral.Instance.Settings.LastCrash
+                            & elog.EntryType == EventLogEntryType.Error
+                            orderby elog.TimeGenerated descending
+                            select elog).ToList();
         }
 
         public void SendCrashData()
         {
-            GenerateJSON();
-
-            foreach (var file in Directory.GetFiles(@"C:\FLAX\FCR\Reports\", "*.json"))
+            GenerateJSONs();
+            string reportsFolder = @"C:\FLAX\FCR\Reports\";
+            checkFolder(reportsFolder);
+            foreach (var file in Directory.GetFiles(reportsFolder, "*.json"))
             {
                 if (!File.Exists(file)) continue;
                 JObject o = JObject.Parse(File.ReadAllText(file));
@@ -135,25 +116,25 @@ namespace FlaxCrashReport.Logic
         private void MoveToArchive(string file)
         {
             string archiveFolder = @"C:\FLAX\FCR\Archive\";
-            if (!Directory.Exists(archiveFolder)) Directory.CreateDirectory(archiveFolder);
+            checkFolder(archiveFolder);
             File.Move(file, archiveFolder + Path.GetFileName(file));
         }
 
         private void UpdateJSON(DateTime d)
         {
             string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-            if (!File.Exists(filepath))
-            {
-                var ml = new Logic.MainLogic();
-                ml.SendEmail("NO_SETTINGS_FILE", "");
-            }
-
+            checkFolder(filepath);
             JObject o = JObject.Parse(File.ReadAllText(filepath));
-            o["FCR_Counter"] = (int)o["FCR_Counter"] + 1;
-            o["FCR_LastCrash"] = d;
+            o["fcr_counter"] = (int)o["fcr_counter"] + 1;
+            o["fcr_lastcrash"] = d;
             string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", output);
+        }
 
+        private void checkFolder(string path)
+        {
+            path = Path.GetDirectoryName(path);
+            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
         }
     }
 }
