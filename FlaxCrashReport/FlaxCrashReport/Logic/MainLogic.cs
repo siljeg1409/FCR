@@ -18,106 +18,77 @@ namespace FlaxCrashReport.Logic
         {
         }
 
-        public void SendEmail(string subject, string body = "", bool globalCall = false)
+        public void SendEmail(string subject, string body = "")
         {
-            try
+            var fromAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailFrom, "FCR Service");
+            var toAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailTo, "FCR Report Center");
+            string fromPassword = Data.SGeneral.Instance.Settings.Password;
+            body = $"Crash time: {Data.SGeneral.Instance.Settings.LastCrash.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
+                $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
+                $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
+                $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
+                $"{body} {Environment.NewLine}" +
+                $"------------------ LOG DATA ------------------";
+
+            var smtp = new SmtpClient
             {
-                var fromAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailFrom, "FCR Service");
-                var toAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailTo, "FCR Report Center");
-                string fromPassword = Data.SGeneral.Instance.Settings.Password;
-                body = $"Crash time: {Data.SGeneral.Instance.Settings.LastCrash.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                    $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
-                    $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
-                    $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
-                    $"{body} {Environment.NewLine}" +
-                    $"------------------ LOG DATA ------------------";
-
-                var smtp = new SmtpClient
-                {
-                    Host = "smtp.gmail.com",
-                    Port = 587,
-                    EnableSsl = true,
-                    DeliveryMethod = SmtpDeliveryMethod.Network,
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
-                };
-                using (var message = new MailMessage(fromAddress, toAddress)
-                {
-                    Subject = subject,
-                    Body = body
-
-                })
-                {
-                    smtp.Send(message);
-                }
-
-            }
-            catch (Exception e)
+                Host = "smtp.gmail.com",
+                Port = 587,
+                EnableSsl = true,
+                DeliveryMethod = SmtpDeliveryMethod.Network,
+                UseDefaultCredentials = false,
+                Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
+            };
+            using (var message = new MailMessage(fromAddress, toAddress)
             {
-                if (!globalCall) return;
-                GenerateFCRJSON("FCR_SERVICE_SEND_EMAIL_ERROR","ORIGINAL BODY: " + Environment.NewLine + body + Environment.NewLine + "SEND EMAIL EXCEPTION: " + Environment.NewLine + e.StackTrace);
+                Subject = subject,
+                Body = body
+
+            })
+            {
+                smtp.Send(message);
             }
 
         }
 
-        /// <summary>
-        /// Checks if there is crashreport for service already and if there is, checks if date is atleast 1 day old
-        /// This will prevent service to spam emails for same error
-        /// </summary>
-        /// <returns></returns>
-        internal bool checkCrashReport()
+        public void createServiceCrashReport(System.Exception ex)
         {
             try
             {
-                string filepath = @"C:\FLAX\FCR\Reports\FCR_CRASH.json";
-                if (!File.Exists(filepath)) return false;
-                JObject o1 = JObject.Parse(File.ReadAllText(filepath));
+                if (Data.SGeneral.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) return;
                 Data.JsonData jd = new Data.JsonData();
-                jd = JsonConvert.DeserializeObject<Data.JsonData>(o1.ToString());
-                if (jd.Date.AddDays(1) < DateTime.Now) return false;
+                string filepath = @"C:\FLAX\FCR\Reports\FCR_CRASH.json";
 
-                //There is report and it's older than 1 day
-                //Update json and set date to current date, and send email
-                JObject o = JObject.Parse(File.ReadAllText(filepath));
-                o["date"] = DateTime.Now;
-                string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
-                File.WriteAllText(@"C:\FLAX\FCR\Reports\FCR_CRASH.json", output);
-                return true;
-            }
-            catch (Exception)
-            {
-                // To prevent infinite loops
-                return false;
-            }
-           
-        }
-
-        private void GenerateFCRJSON(string v1, string v2)
-        {
-            try
-            {
-                Data.JsonData jd = new Data.JsonData
+                if (File.Exists(filepath))
                 {
-                    MachineName = Data.SGeneral.Instance.Settings.MachineName,
-                    UserName = Data.SGeneral.Instance.Settings.UserName,
-                    Date = DateTime.Now,
-                    Subject = v1,
-                    Body = v2
-                };
+                    JObject o1 = JObject.Parse(File.ReadAllText(filepath));
+                    jd = JsonConvert.DeserializeObject<Data.JsonData>(o1.ToString());
+                }
+               
+
+                jd.MachineName = Data.SGeneral.Instance.Settings.MachineName;
+                jd.UserName = Data.SGeneral.Instance.Settings.UserName;
+                jd.Date = DateTime.Now;
+                jd.Subject = "FCR_CRASH_REPORT";
+                jd.Body = ex.StackTrace;
 
                 var serializerSettings = new JsonSerializerSettings();
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                string filepath = @"C:\FLAX\FCR\Reports\FCR_CRASH.json";
                 File.WriteAllText(filepath, json);
+                UpdateSettingsJSON(DateTime.Now, true);
+
+
             }
             catch (Exception)
             {
-               // if this fails, i will loose error data
-               //I cant allow this to go on global exception because it will eventaully call this function again -> infinite loop -> bad :(
+                // To prevent infinite loops and email spamming
+                // Information (crash) will be lost here
             }
            
         }
+
+
 
         private void GenerateJSONs()
         {
@@ -141,7 +112,7 @@ namespace FlaxCrashReport.Logic
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
                 File.WriteAllText(@"C:\FLAX\FCR\Reports\Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json", json);
             }
-            UpdateJSON(crashdate);
+            UpdateSettingsJSON(crashdate);
         }
 
 
@@ -160,7 +131,7 @@ namespace FlaxCrashReport.Logic
         {
             GenerateJSONs();
             string reportsFolder = @"C:\FLAX\FCR\Reports\";
-            checkFolder(reportsFolder);
+            CheckFolder(reportsFolder);
             foreach (var file in Directory.GetFiles(reportsFolder, "*.json"))
             {
                 if (!File.Exists(file)) continue;
@@ -173,24 +144,24 @@ namespace FlaxCrashReport.Logic
 
         private void MoveToArchive(string file)
         {
-            if (Path.GetFileName(file) == "FCR_CRASH.json") return;
             string archiveFolder = @"C:\FLAX\FCR\Archive\";
-            checkFolder(archiveFolder);
+            CheckFolder(archiveFolder);
             File.Move(file, archiveFolder + Path.GetFileName(file));
         }
 
-        private void UpdateJSON(DateTime d)
+        private void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
         {
             string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-            checkFolder(filepath);
+            CheckFolder(filepath);
             JObject o = JObject.Parse(File.ReadAllText(filepath));
             o["fcr_counter"] = (int)o["fcr_counter"] + 1;
             o["fcr_lastcrash"] = d;
+            if(fcrcrash) o["fcr_lastservicecrash"] = DateTime.Now;
             string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", output);
         }
 
-        private void checkFolder(string path)
+        private void CheckFolder(string path)
         {
             path = Path.GetDirectoryName(path);
             if (!Directory.Exists(path)) Directory.CreateDirectory(path);

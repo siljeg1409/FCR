@@ -68,6 +68,7 @@ namespace FlaxCrashReport.Data
                 MachineName = Environment.MachineName,
                 UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name,
                 LastCrash = new DateTime(1990, 9, 14),
+                LastServiceCrash = new DateTime(1990, 9, 14),
                 Counter = 1,
             };
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);

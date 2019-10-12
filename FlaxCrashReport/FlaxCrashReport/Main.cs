@@ -11,21 +11,29 @@ namespace FlaxCrashReport
         public Main()
         {
             InitializeComponent();
+            OnElapsedTime(null, null);
+            System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
         }
-   
-    
+
         protected override void OnStart(string[] args)
         {
-            timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
-            timer.Interval = 60000; //1 minute
-            timer.Enabled = true;
+            //timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
+            //timer.Interval = 60000; //1 minute
+            //timer.Enabled = true;
         }
 
        
 
         protected override void OnStop()
         {
-            ml.SendEmail("FCR_SERVICE_STOPPED", "", true);
+            try
+            {
+                ml.SendEmail("FCR_SERVICE_STOPPED", "");
+            }
+            catch (System.Exception ex)
+            {
+                ml.createServiceCrashReport(ex);
+            }
         }
 
         private void OnElapsedTime(object source, ElapsedEventArgs e)
@@ -36,8 +44,7 @@ namespace FlaxCrashReport
             }
             catch (System.Exception ex)
             {
-                if (ml.checkCrashReport()) return;
-                ml.SendEmail("FCR_SERVICE_CRASH", ex.StackTrace, true);
+                ml.createServiceCrashReport(ex);
             }
         }
 
