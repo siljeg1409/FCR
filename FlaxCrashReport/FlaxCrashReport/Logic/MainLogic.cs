@@ -18,7 +18,7 @@ namespace FlaxCrashReport.Logic
         {
         }
 
-        public void SendEmail(string subject, string body = "")
+        public void SendEmail(string subject, string body = "", bool globalCall = false)
         {
             try
             {
@@ -54,9 +54,42 @@ namespace FlaxCrashReport.Logic
             }
             catch (Exception e)
             {
+                if (!globalCall) return;
                 GenerateFCRJSON("FCR_SERVICE_SEND_EMAIL_ERROR","ORIGINAL BODY: " + Environment.NewLine + body + Environment.NewLine + "SEND EMAIL EXCEPTION: " + Environment.NewLine + e.StackTrace);
             }
 
+        }
+
+        /// <summary>
+        /// Checks if there is crashreport for service already and if there is, checks if date is atleast 1 day old
+        /// This will prevent service to spam emails for same error
+        /// </summary>
+        /// <returns></returns>
+        internal bool checkCrashReport()
+        {
+            try
+            {
+                string filepath = @"C:\FLAX\FCR\Reports\FCR_CRASH.json";
+                if (!File.Exists(filepath)) return false;
+                JObject o1 = JObject.Parse(File.ReadAllText(filepath));
+                Data.JsonData jd = new Data.JsonData();
+                jd = JsonConvert.DeserializeObject<Data.JsonData>(o1.ToString());
+                if (jd.Date.AddDays(1) < DateTime.Now) return false;
+
+                //There is report and it's older than 1 day
+                //Update json and set date to current date, and send email
+                JObject o = JObject.Parse(File.ReadAllText(filepath));
+                o["date"] = DateTime.Now;
+                string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
+                File.WriteAllText(@"C:\FLAX\FCR\Reports\FCR_CRASH.json", output);
+                return true;
+            }
+            catch (Exception)
+            {
+                // To prevent infinite loops
+                return false;
+            }
+           
         }
 
         private void GenerateFCRJSON(string v1, string v2)
@@ -140,6 +173,7 @@ namespace FlaxCrashReport.Logic
 
         private void MoveToArchive(string file)
         {
+            if (Path.GetFileName(file) == "FCR_CRASH.json") return;
             string archiveFolder = @"C:\FLAX\FCR\Archive\";
             checkFolder(archiveFolder);
             File.Move(file, archiveFolder + Path.GetFileName(file));

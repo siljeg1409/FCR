@@ -25,7 +25,7 @@ namespace FlaxCrashReport
 
         protected override void OnStop()
         {
-            ml.SendEmail("FCR_SERVICE_STOPPED");
+            ml.SendEmail("FCR_SERVICE_STOPPED", "", true);
         }
 
         private void OnElapsedTime(object source, ElapsedEventArgs e)
@@ -36,7 +36,8 @@ namespace FlaxCrashReport
             }
             catch (System.Exception ex)
             {
-                ml.SendEmail("FCR_SERVICE_CRASH", ex.StackTrace);
+                if (ml.checkCrashReport()) return;
+                ml.SendEmail("FCR_SERVICE_CRASH", ex.StackTrace, true);
             }
         }
 
