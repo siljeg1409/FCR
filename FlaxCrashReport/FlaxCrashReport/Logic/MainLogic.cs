@@ -18,14 +18,19 @@ namespace FlaxCrashReport.Logic
         {
         }
 
-        public bool SendEmail(string subject, string body = "")
+        public void SendEmail(string subject, string body = "")
         {
             try
             {
                 var fromAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailFrom, "FCR Service");
                 var toAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailTo, "FCR Report Center");
                 string fromPassword = Data.SGeneral.Instance.Settings.Password;
-
+                body = $"Crash time: {Data.SGeneral.Instance.Settings.LastCrash.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
+                    $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
+                    $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
+                    $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
+                    $"{body} {Environment.NewLine}" +
+                    $"------------------ LOG DATA ------------------";
 
                 var smtp = new SmtpClient
                 {
@@ -39,12 +44,7 @@ namespace FlaxCrashReport.Logic
                 using (var message = new MailMessage(fromAddress, toAddress)
                 {
                     Subject = subject,
-                    Body = $"Crash time: {Data.SGeneral.Instance.Settings.LastCrash.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                    $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
-                    $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" + 
-                    $"------------------ LOG DATA ------------------ {Environment.NewLine}" + 
-                    $"{body} {Environment.NewLine}" +
-                    $"------------------ LOG DATA ------------------" 
+                    Body = body
 
                 })
                 {
@@ -52,13 +52,38 @@ namespace FlaxCrashReport.Logic
                 }
 
             }
-            catch (Exception)
+            catch (Exception e)
             {
-                //this is where i must have try-catch, or i will have problems with spamming and recursion
-                return false;
+                GenerateFCRJSON("FCR_SERVICE_SEND_EMAIL_ERROR","ORIGINAL BODY: " + Environment.NewLine + body + Environment.NewLine + "SEND EMAIL EXCEPTION: " + Environment.NewLine + e.StackTrace);
             }
 
-            return true;
+        }
+
+        private void GenerateFCRJSON(string v1, string v2)
+        {
+            try
+            {
+                Data.JsonData jd = new Data.JsonData
+                {
+                    MachineName = Data.SGeneral.Instance.Settings.MachineName,
+                    UserName = Data.SGeneral.Instance.Settings.UserName,
+                    Date = DateTime.Now,
+                    Subject = v1,
+                    Body = v2
+                };
+
+                var serializerSettings = new JsonSerializerSettings();
+                serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
+                var json = JsonConvert.SerializeObject(jd, serializerSettings);
+                string filepath = @"C:\FLAX\FCR\Reports\FCR_CRASH.json";
+                File.WriteAllText(filepath, json);
+            }
+            catch (Exception)
+            {
+               // if this fails, i will loose error data
+               //I cant allow this to go on global exception because it will eventaully call this function again -> infinite loop -> bad :(
+            }
+           
         }
 
         private void GenerateJSONs()

@@ -34,9 +34,9 @@ namespace FlaxCrashReport
             {
                 ml.SendCrashData();
             }
-            catch (System.Exception)
+            catch (System.Exception ex)
             {
-                ml.SendEmail("FCR_SERVICE_CRASH");
+                ml.SendEmail("FCR_SERVICE_CRASH", ex.StackTrace);
             }
         }
 
