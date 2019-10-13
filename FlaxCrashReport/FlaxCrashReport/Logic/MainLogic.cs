@@ -33,8 +33,6 @@ namespace FlaxCrashReport.Logic
             string password = Data.SGeneral.Instance.Settings.Password.Trim();
             if ( from == "" || to == "" || password == "")
             {
-                //There is really no need to craete report here, it wont be sent anyway
-                //Maybe i should make daily report from service that will send email, each day so i can monitor service that way
                 return;
             }
             if (dt == null) dt = DateTime.Now;
@@ -94,7 +92,7 @@ namespace FlaxCrashReport.Logic
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
                 File.WriteAllText(filepath, json);
-                UpdateSettingsJSON(DateTime.Now, true);
+                UpdateSettingsJSON(true, DateTime.Now, DateTime.Now);
 
 
             }
@@ -108,17 +106,21 @@ namespace FlaxCrashReport.Logic
 
         private static void GenerateJSONs()
         {
-            DateTime crashdate = DateTime.Now;
+            DateTime crashdateFlax = DateTime.Now;
+            DateTime crashdateApp = DateTime.Now;
             List<EventLogEntry> elgs = GetLogData();
             if (elgs == null || elgs.Count() < 1) return;
             foreach ( EventLogEntry e in elgs)
             {
-                crashdate = e.TimeWritten;
+                if (e.Source == "FLAX") crashdateFlax = e.TimeWritten;
+                else
+                    crashdateApp = e.TimeWritten;
+
                 Data.JsonData jd = new Data.JsonData
                 {
                     MachineName = Data.SGeneral.Instance.Settings.MachineName,
                     UserName = Data.SGeneral.Instance.Settings.UserName,
-                    Date = crashdate,
+                    Date = e.TimeWritten,
                     Subject = "CRASH_REPORT: " + Data.SGeneral.Instance.Settings.Counter++,
                     Body = e.Message.ToString()
                 };
@@ -126,22 +128,31 @@ namespace FlaxCrashReport.Logic
                 var serializerSettings = new JsonSerializerSettings();
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json";
+                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + e.TimeWritten.ToString("yyyyMMddHHmmss") + ".json";
                 File.WriteAllText(newreport, json);
             }
-            UpdateSettingsJSON(crashdate, false);
+            UpdateSettingsJSON(false, crashdateFlax, crashdateApp);
         }
 
         private static List<EventLogEntry> GetLogData()
         {
-            EventLog el = new EventLog("FLAX");
-            var ret =  (from EventLogEntry elog in el.Entries
-                    where elog.TimeWritten > Data.SGeneral.Instance.Settings.LastAppCrash
+            EventLog el1 = new EventLog("FLAX");
+            var FlaxLog =  (from EventLogEntry elog in el1.Entries
+                    where elog.TimeWritten > Data.SGeneral.Instance.Settings.LastFlaxCrash
                     && elog.EntryType == EventLogEntryType.Error
                     orderby elog.TimeGenerated ascending
                     select elog).ToList();
 
-            return ret;
+            // The rest of logs that is created by the system
+            EventLog el2 = new EventLog("Application");
+            var AppLog = (from EventLogEntry elog in el2.Entries
+                       where elog.TimeWritten > Data.SGeneral.Instance.Settings.LastAppCrash
+                       && elog.Message.ToString().Contains("Application: Users.exe")
+                       && elog.EntryType == EventLogEntryType.Error
+                       orderby elog.TimeGenerated ascending
+                       select elog).ToList();
+
+            return FlaxLog.Union(AppLog).ToList();
 
         }
 
@@ -152,15 +163,16 @@ namespace FlaxCrashReport.Logic
             File.Move(file, tmpFile);
         }
 
-        private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
+        private static void UpdateSettingsJSON(bool fcrcrash, DateTime dflax, DateTime dapp)
         {
             Data.GlobalSettings gs = Data.SGeneral.Instance.Settings;
             if (fcrcrash)
-                gs.LastServiceCrash = d;
+                gs.LastServiceCrash = DateTime.Now;
             else
             {
                 gs.Counter += 1;
-                gs.LastAppCrash = d;
+                gs.LastAppCrash = dapp;
+                gs.LastFlaxCrash = dflax;
             }
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);

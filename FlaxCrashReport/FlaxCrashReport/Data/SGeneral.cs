@@ -69,6 +69,7 @@ namespace FlaxCrashReport.Data
                 UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name,
                 LastServiceCrash = new DateTime(1990, 9, 14),
                 LastAppCrash = new DateTime(1990, 9, 14),
+                LastFlaxCrash = new DateTime(1990, 9, 14),
                 ReportsPath = reportspath,
                 ArchivePath = archivepath,
                 Counter = 1,

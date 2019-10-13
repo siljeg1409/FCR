@@ -18,6 +18,7 @@ namespace FlaxCrashReport.Data
         private string _emailFrom;
         private DateTime _lastservicecrash;
         private DateTime _lastappcrash;
+        private DateTime _lastflaxcrash;
         private string _reportspath;
         private string _archivepath;
         #endregion
@@ -122,6 +123,19 @@ namespace FlaxCrashReport.Data
                 if (value != _lastappcrash)
                 {
                     _lastappcrash = value;
+                }
+            }
+        }
+
+        [JsonProperty("fcr_lastflaxcrash")]
+        public DateTime LastFlaxCrash
+        {
+            get { return _lastflaxcrash; }
+            set
+            {
+                if (value != _lastflaxcrash)
+                {
+                    _lastflaxcrash = value;
                 }
             }
         }

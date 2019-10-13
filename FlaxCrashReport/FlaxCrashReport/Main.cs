@@ -10,7 +10,7 @@ namespace FlaxCrashReport
         public Main()
         {
             InitializeComponent();
-            Logic.MainLogic.SendEmail("FCR_SERVICE_STARTED", "");
+            Logic.MainLogic.SendEmail("FCR_STARTED", "");
             ////DEBUG => uncomment code below!
             //OnElapsedTime(null, null);
             //System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
@@ -27,7 +27,7 @@ namespace FlaxCrashReport
         {
             try
             {
-                Logic.MainLogic.SendEmail("FCR_SERVICE_STOPPED", "");
+                Logic.MainLogic.SendEmail("FCR_STOPPED", "");
             }
             catch (System.Exception ex)
             {
