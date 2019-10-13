@@ -15,10 +15,7 @@ namespace FlaxCrashReport.Logic
     {
         public static void SendCrashData()
         {
-            foreach( Data.Application app in Data.SGeneral.Instance.Settings.AppList)
-            {
-                GenerateJSONs(app);
-            }
+            GenerateJSONs();
             foreach (var file in Directory.GetFiles(Data.SGeneral.Instance.Settings.ReportsPath, "*.json"))
             {
                 if (!File.Exists(file)) continue;
@@ -29,7 +26,7 @@ namespace FlaxCrashReport.Logic
             }
         }
 
-        public static void SendEmail(string subject, string body = "", Object dt = null)
+        public static void SendEmail(string subject, string body = "", object dt = null)
         {
             string from = Data.SGeneral.Instance.Settings.EmailFrom.Trim();
             string to = Data.SGeneral.Instance.Settings.EmailTo.Trim();
@@ -76,9 +73,9 @@ namespace FlaxCrashReport.Logic
         {
             try
             {
-                if (Data.SGeneral.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) return;
+                string filepath = Data.SGeneral.Instance.Settings.ReportsPath + @"\FCR_CRASH.json";
+                if ((Data.SGeneral.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) && File.Exists(filepath)) return;
                 Data.JsonData jd = new Data.JsonData();
-                string filepath = Data.SGeneral.Instance.Settings.ReportsPath +  @"\FCR_CRASH.json";
 
                 if (File.Exists(filepath))
                 {
@@ -109,11 +106,11 @@ namespace FlaxCrashReport.Logic
            
         }
 
-        private static void GenerateJSONs(Data.Application app)
+        private static void GenerateJSONs()
         {
             DateTime crashdate = DateTime.Now;
-            List<EventLogEntry> elgs = GetLogData(app);
-            if (elgs == null) return;
+            List<EventLogEntry> elgs = GetLogData();
+            if (elgs == null || elgs.Count() < 1) return;
             foreach ( EventLogEntry e in elgs)
             {
                 crashdate = e.TimeGenerated;
@@ -129,45 +126,46 @@ namespace FlaxCrashReport.Logic
                 var serializerSettings = new JsonSerializerSettings();
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\" + app.AppName.ToUpper() + "_Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json";
+                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json";
                 File.WriteAllText(newreport, json);
             }
-            UpdateSettingsJSON(crashdate, false, app);
+            UpdateSettingsJSON(crashdate, false);
         }
 
-        private static List<EventLogEntry> GetLogData(Data.Application app)
+        private static List<EventLogEntry> GetLogData()
         {
-            EventLog el = new EventLog("Application");
-            return  (from EventLogEntry elog in el.Entries
-                            where (elog.Message.ToString().Contains("Application: " + app.AppName + ".exe"))
-                            && elog.TimeGenerated > app.AppCrashTime
-                            & elog.EntryType == EventLogEntryType.Error
-                            select elog).ToList();
+            EventLog el = new EventLog("FLAX");
+            var ret =  (from EventLogEntry elog in el.Entries
+                    where elog.TimeGenerated > Data.SGeneral.Instance.Settings.LastAppCrash
+                    && elog.EntryType == EventLogEntryType.Error
+                    orderby elog.TimeGenerated ascending
+                    select elog).ToList();
+
+            return ret;
+
         }
 
         private static void MoveToArchive(string file)
         {
-            File.Move(file, Data.SGeneral.Instance.Settings.ArchivePath + @"\" + Path.GetFileName(file));
+            string tmpFile = Data.SGeneral.Instance.Settings.ArchivePath + @"\" + Path.GetFileName(file);
+            if (File.Exists(tmpFile)) File.Delete(tmpFile);
+            File.Move(file, tmpFile);
         }
 
-        private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false, Data.Application app = null)
+        private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
         {
             string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
 
             JObject jo = JObject.Parse(File.ReadAllText(filepath));
             Data.GlobalSettings gs = JsonConvert.DeserializeObject<Data.GlobalSettings>(jo.ToString());
 
-            if(app != null)
-            {
-                Data.Application a = gs.AppList.FirstOrDefault(w => w.AppName == app.AppName);
-                if(a != null) a.AppCrashTime = d;
-
-            }
-            
             if (fcrcrash)
                 gs.LastServiceCrash = d;
             else
+            {
                 gs.Counter += 1;
+                gs.LastAppCrash = d;
+            }
 
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);

@@ -68,13 +68,13 @@ namespace FlaxCrashReport.Data
                 MachineName = Environment.MachineName,
                 UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name,
                 LastServiceCrash = new DateTime(1990, 9, 14),
+                LastAppCrash = new DateTime(1990, 9, 14),
                 ReportsPath = reportspath,
                 ArchivePath = archivepath,
                 Counter = 1,
                 EmailFrom = "",
                 EmailTo = "",
                 Password = "",
-                AppList = new System.Collections.Generic.List<Application> { new Application { AppName = "Users" , AppCrashTime = new DateTime(1990, 9, 14) } }
             };
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
             File.WriteAllText(settingspath + @"\GlobalSettings.json", json);

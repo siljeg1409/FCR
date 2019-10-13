@@ -50,7 +50,6 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Data\Application.cs" />
     <Compile Include="Data\GlobalSettings.cs" />
     <Compile Include="Data\JsonData.cs" />
     <Compile Include="Data\SGeneral.cs" />
