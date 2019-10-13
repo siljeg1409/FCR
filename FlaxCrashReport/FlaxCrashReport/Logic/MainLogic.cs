@@ -139,7 +139,7 @@ namespace FlaxCrashReport.Logic
         {
             EventLog el = new EventLog("Application");
             return  (from EventLogEntry elog in el.Entries
-                            where (elog.Message.ToString().StartsWith("Application: " + app.AppName + ".exe"))
+                            where (elog.Message.ToString().Contains("Application: " + app.AppName + ".exe"))
                             && elog.TimeGenerated > app.AppCrashTime
                             & elog.EntryType == EventLogEntryType.Error
                             select elog).ToList();
