@@ -147,7 +147,7 @@ namespace FlaxCrashReport.Logic
 
         private static void MoveToArchive(string file)
         {
-            File.Move(file, Data.SGeneral.Instance.Settings.ArchivePath + Path.GetFileName(file));
+            File.Move(file, Data.SGeneral.Instance.Settings.ArchivePath + @"\" + Path.GetFileName(file));
         }
 
         private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false, Data.Application app = null)
