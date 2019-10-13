@@ -15,23 +15,34 @@ namespace FlaxCrashReport.Logic
     {
         public static void SendCrashData()
         {
-            GenerateJSONs();
+            foreach( Data.Application app in Data.SGeneral.Instance.Settings.AppList)
+            {
+                GenerateJSONs(app);
+            }
             foreach (var file in Directory.GetFiles(Data.SGeneral.Instance.Settings.ReportsPath, "*.json"))
             {
                 if (!File.Exists(file)) continue;
                 JObject o = JObject.Parse(File.ReadAllText(file));
                 Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
-                SendEmail(s.Subject, s.Body);
+                SendEmail(s.Subject, s.Body, s.Date);
                 MoveToArchive(file);
             }
         }
 
-        public static void SendEmail(string subject, string body = "")
+        public static void SendEmail(string subject, string body = "", Object dt = null)
         {
-            var fromAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailFrom, "FCR Service");
-            var toAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailTo, "FCR Report Center");
-            string fromPassword = Data.SGeneral.Instance.Settings.Password;
-            body = $"Crash time: {Data.SGeneral.Instance.Settings.LastCrash.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
+            string from = Data.SGeneral.Instance.Settings.EmailFrom.Trim();
+            string to = Data.SGeneral.Instance.Settings.EmailTo.Trim();
+            string password = Data.SGeneral.Instance.Settings.Password.Trim();
+            if ( from == "" || to == "" || password == "")
+            {
+                //There is really no need to craete report here, it wont be sent anyway
+                //Maybe i should make daily report from service that will send email, each day so i can monitor service that way
+                return;
+            }
+            if (dt == null) dt = DateTime.Now;
+
+            body = $"Crash time: {((DateTime)dt).ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
                 $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
                 $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
                 $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
@@ -45,10 +56,10 @@ namespace FlaxCrashReport.Logic
                 EnableSsl = true,
                 DeliveryMethod = SmtpDeliveryMethod.Network,
                 UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
+                Credentials = new NetworkCredential(new MailAddress(from, "FCR Service").Address, password)
                 
             };
-            using (var message = new MailMessage(fromAddress, toAddress)
+            using (var message = new MailMessage(new MailAddress(from, "FCR Service"), new MailAddress(to, "FCR Report Center"))
             {
                 Subject = subject,
                 Body = body,
@@ -61,13 +72,13 @@ namespace FlaxCrashReport.Logic
 
         }
 
-        public static void CreateServiceCrashReport(System.Exception ex)
+        public static void CreateServiceCrashReport(Exception ex)
         {
             try
             {
                 if (Data.SGeneral.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) return;
                 Data.JsonData jd = new Data.JsonData();
-                string filepath = @"C:\FLAX\FCR\Reports\FCR_CRASH.json";
+                string filepath = Data.SGeneral.Instance.Settings.ReportsPath +  @"\FCR_CRASH.json";
 
                 if (File.Exists(filepath))
                 {
@@ -98,10 +109,10 @@ namespace FlaxCrashReport.Logic
            
         }
 
-        private static void GenerateJSONs()
+        private static void GenerateJSONs(Data.Application app)
         {
             DateTime crashdate = DateTime.Now;
-            List<EventLogEntry> elgs = GetLogData();
+            List<EventLogEntry> elgs = GetLogData(app);
             if (elgs == null) return;
             foreach ( EventLogEntry e in elgs)
             {
@@ -118,17 +129,18 @@ namespace FlaxCrashReport.Logic
                 var serializerSettings = new JsonSerializerSettings();
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                File.WriteAllText( Data.SGeneral.Instance.Settings.ReportsPath + "Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json", json);
+                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\" + app.AppName.ToUpper() + "_Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json";
+                File.WriteAllText(newreport, json);
             }
-            UpdateSettingsJSON(crashdate);
+            UpdateSettingsJSON(crashdate, false, app);
         }
 
-        private static List<EventLogEntry> GetLogData()
+        private static List<EventLogEntry> GetLogData(Data.Application app)
         {
             EventLog el = new EventLog("Application");
             return  (from EventLogEntry elog in el.Entries
-                            where (elog.Message.ToString().StartsWith("Application: Users.exe"))
-                            && elog.TimeGenerated > Data.SGeneral.Instance.Settings.LastCrash
+                            where (elog.Message.ToString().StartsWith("Application: " + app.AppName + ".exe"))
+                            && elog.TimeGenerated > app.AppCrashTime
                             & elog.EntryType == EventLogEntryType.Error
                             select elog).ToList();
         }
@@ -138,15 +150,28 @@ namespace FlaxCrashReport.Logic
             File.Move(file, Data.SGeneral.Instance.Settings.ArchivePath + Path.GetFileName(file));
         }
 
-        private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
+        private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false, Data.Application app = null)
         {
             string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-            JObject o = JObject.Parse(File.ReadAllText(filepath));
-            o["fcr_counter"] = (int)o["fcr_counter"] + 1;
-            o["fcr_lastcrash"] = d;
-            if(fcrcrash) o["fcr_lastservicecrash"] = DateTime.Now;
-            string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
-            File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", output);
+
+            JObject jo = JObject.Parse(File.ReadAllText(filepath));
+            Data.GlobalSettings gs = JsonConvert.DeserializeObject<Data.GlobalSettings>(jo.ToString());
+
+            if(app != null)
+            {
+                Data.Application a = gs.AppList.FirstOrDefault(w => w.AppName == app.AppName);
+                if(a != null) a.AppCrashTime = d;
+
+            }
+            
+            if (fcrcrash)
+                gs.LastServiceCrash = d;
+            else
+                gs.Counter += 1;
+
+            var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
+            File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
+
         }
       
     }

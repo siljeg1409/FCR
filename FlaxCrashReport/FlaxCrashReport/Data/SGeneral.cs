@@ -57,28 +57,27 @@ namespace FlaxCrashReport.Data
 
         private static string CheckGlobalSettingsFile()
         {
-            string settingsfilepath = @"C:\FLAX\Settings\GlobalSettings.json"; 
+            string settingspath = CheckFolder(@"C:\FLAX\Settings\");
+            string reportspath = CheckFolder(@"C:\FLAX\Services\FCR\Reports\");
+            string archivepath = CheckFolder(@"C:\FLAX\Services\FCR\Archive\");
+            string settingsfilepath = @"C:\FLAX\Settings\GlobalSettings.json";
             if (File.Exists(settingsfilepath)) return settingsfilepath;
-
-            string settingspath = @"C:\FLAX\Settings\";
-            string reportspath = @"C:\FLAX\Services\FCR\Reports\";
-            string archivepath = @"C:\FLAX\Services\FCR\Archive\";
 
             GlobalSettings gs = new GlobalSettings
             {
                 MachineName = Environment.MachineName,
                 UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name,
-                LastCrash = new DateTime(1990, 9, 14),
                 LastServiceCrash = new DateTime(1990, 9, 14),
-                ReportsPath = CheckFolder(reportspath),
-                ArchivePath = CheckFolder(archivepath),
+                ReportsPath = reportspath,
+                ArchivePath = archivepath,
                 Counter = 1,
                 EmailFrom = "",
                 EmailTo = "",
-                Password = ""
+                Password = "",
+                AppList = new System.Collections.Generic.List<Application> { new Application { AppName = "Users" , AppCrashTime = new DateTime(1990, 9, 14) } }
             };
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
-            File.WriteAllText(CheckFolder(settingspath) + @"\GlobalSettings.json", json);
+            File.WriteAllText(settingspath + @"\GlobalSettings.json", json);
             return settingsfilepath;
         }
 
