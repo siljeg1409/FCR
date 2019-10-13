@@ -23,8 +23,6 @@ namespace FlaxCrashReport
             timer.Enabled = true;
         }
 
-       
-
         protected override void OnStop()
         {
             try
@@ -42,6 +40,10 @@ namespace FlaxCrashReport
             try
             {
                 Logic.MainLogic.SendCrashData();
+                if (System.DateTime.Now.Hour == 12 && System.DateTime.Now.Minute == 0)
+                {
+                    Logic.MainLogic.SendEmail("FCR_OK", "");
+                }
             }
             catch (System.Exception ex)
             {
