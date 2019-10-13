@@ -11,14 +11,22 @@ using System.Collections.Generic;
 
 namespace FlaxCrashReport.Logic
 {
-    public class MainLogic
+    public static class MainLogic
     {
-
-        public MainLogic()
+        public static void SendCrashData()
         {
+            GenerateJSONs();
+            foreach (var file in Directory.GetFiles(Data.SGeneral.Instance.Settings.ReportsPath, "*.json"))
+            {
+                if (!File.Exists(file)) continue;
+                JObject o = JObject.Parse(File.ReadAllText(file));
+                Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
+                SendEmail(s.Subject, s.Body);
+                MoveToArchive(file);
+            }
         }
 
-        public void SendEmail(string subject, string body = "")
+        public static void SendEmail(string subject, string body = "")
         {
             var fromAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailFrom, "FCR Service");
             var toAddress = new MailAddress(Data.SGeneral.Instance.Settings.EmailTo, "FCR Report Center");
@@ -38,11 +46,13 @@ namespace FlaxCrashReport.Logic
                 DeliveryMethod = SmtpDeliveryMethod.Network,
                 UseDefaultCredentials = false,
                 Credentials = new NetworkCredential(fromAddress.Address, fromPassword)
+                
             };
             using (var message = new MailMessage(fromAddress, toAddress)
             {
                 Subject = subject,
-                Body = body
+                Body = body,
+                Priority = MailPriority.High
 
             })
             {
@@ -51,7 +61,7 @@ namespace FlaxCrashReport.Logic
 
         }
 
-        public void createServiceCrashReport(System.Exception ex)
+        public static void CreateServiceCrashReport(System.Exception ex)
         {
             try
             {
@@ -88,9 +98,7 @@ namespace FlaxCrashReport.Logic
            
         }
 
-
-
-        private void GenerateJSONs()
+        private static void GenerateJSONs()
         {
             DateTime crashdate = DateTime.Now;
             List<EventLogEntry> elgs = GetLogData();
@@ -110,49 +118,29 @@ namespace FlaxCrashReport.Logic
                 var serializerSettings = new JsonSerializerSettings();
                 serializerSettings.ContractResolver = new CamelCasePropertyNamesContractResolver();
                 var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                File.WriteAllText(@"C:\FLAX\FCR\Reports\Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json", json);
+                File.WriteAllText( Data.SGeneral.Instance.Settings.ReportsPath + "Report_" + crashdate.ToString("yyyyMMddHHmmss") + ".json", json);
             }
             UpdateSettingsJSON(crashdate);
         }
 
-
-        private List<EventLogEntry> GetLogData()
+        private static List<EventLogEntry> GetLogData()
         {
             EventLog el = new EventLog("Application");
             return  (from EventLogEntry elog in el.Entries
                             where (elog.Message.ToString().StartsWith("Application: Users.exe"))
                             && elog.TimeGenerated > Data.SGeneral.Instance.Settings.LastCrash
                             & elog.EntryType == EventLogEntryType.Error
-                            orderby elog.TimeGenerated descending
                             select elog).ToList();
         }
 
-        public void SendCrashData()
+        private static void MoveToArchive(string file)
         {
-            GenerateJSONs();
-            string reportsFolder = @"C:\FLAX\FCR\Reports\";
-            CheckFolder(reportsFolder);
-            foreach (var file in Directory.GetFiles(reportsFolder, "*.json"))
-            {
-                if (!File.Exists(file)) continue;
-                JObject o = JObject.Parse(File.ReadAllText(file));
-                Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
-                SendEmail(s.Subject, s.Body);
-                MoveToArchive(file);
-            }
+            File.Move(file, Data.SGeneral.Instance.Settings.ArchivePath + Path.GetFileName(file));
         }
 
-        private void MoveToArchive(string file)
-        {
-            string archiveFolder = @"C:\FLAX\FCR\Archive\";
-            CheckFolder(archiveFolder);
-            File.Move(file, archiveFolder + Path.GetFileName(file));
-        }
-
-        private void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
+        private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
         {
             string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-            CheckFolder(filepath);
             JObject o = JObject.Parse(File.ReadAllText(filepath));
             o["fcr_counter"] = (int)o["fcr_counter"] + 1;
             o["fcr_lastcrash"] = d;
@@ -160,11 +148,6 @@ namespace FlaxCrashReport.Logic
             string output = Newtonsoft.Json.JsonConvert.SerializeObject(o, Newtonsoft.Json.Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", output);
         }
-
-        private void CheckFolder(string path)
-        {
-            path = Path.GetDirectoryName(path);
-            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
-        }
+      
     }
 }

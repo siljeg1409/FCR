@@ -1,6 +1,5 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using Newtonsoft.Json.Serialization;
 using System;
 using System.IO;
 
@@ -24,7 +23,6 @@ namespace FlaxCrashReport.Data
                 }
             }
         }
-
 
         SGeneral()
         {
@@ -52,28 +50,44 @@ namespace FlaxCrashReport.Data
 
         private static GlobalSettings GetSettings()
         {
-            string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-            checkGlobalSettings(filepath);
-            JObject o1 = JObject.Parse(File.ReadAllText(filepath));
+            JObject jo = JObject.Parse(File.ReadAllText(CheckGlobalSettingsFile()));
             GlobalSettings gs = new GlobalSettings();
-            return JsonConvert.DeserializeObject<GlobalSettings>(o1.ToString());
+            return JsonConvert.DeserializeObject<GlobalSettings>(jo.ToString());
         }
 
-        private static void checkGlobalSettings(string filepath)
+        private static string CheckGlobalSettingsFile()
         {
-            if (File.Exists(filepath)) return;
-            if (!Directory.Exists(@"C:\FLAX\Settings\")) Directory.CreateDirectory(@"C:\FLAX\Settings\"); 
+            string settingsfilepath = @"C:\FLAX\Settings\GlobalSettings.json"; 
+            if (File.Exists(settingsfilepath)) return settingsfilepath;
+
+            string settingspath = @"C:\FLAX\Settings\";
+            string reportspath = @"C:\FLAX\Services\FCR\Reports\";
+            string archivepath = @"C:\FLAX\Services\FCR\Archive\";
+
             GlobalSettings gs = new GlobalSettings
             {
                 MachineName = Environment.MachineName,
                 UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name,
                 LastCrash = new DateTime(1990, 9, 14),
                 LastServiceCrash = new DateTime(1990, 9, 14),
+                ReportsPath = CheckFolder(reportspath),
+                ArchivePath = CheckFolder(archivepath),
                 Counter = 1,
+                EmailFrom = "",
+                EmailTo = "",
+                Password = ""
             };
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
-            File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
+            File.WriteAllText(CheckFolder(settingspath) + @"\GlobalSettings.json", json);
+            return settingsfilepath;
         }
-      
+
+        private static string CheckFolder(string path)
+        {
+            path = Path.GetDirectoryName(path);
+            if (!Directory.Exists(path)) Directory.CreateDirectory(path);
+            return path;
+        }
+
     }
 }

@@ -6,20 +6,21 @@ namespace FlaxCrashReport
     public partial class Main : ServiceBase
     {
         Timer timer = new Timer();
-        Logic.MainLogic ml = new Logic.MainLogic();
 
         public Main()
         {
             InitializeComponent();
-            OnElapsedTime(null, null);
-            System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
+            Logic.MainLogic.SendEmail("FCR_SERVICE_STARTED", "");
+            //DEBUG
+            //OnElapsedTime(null, null);
+            //System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
         }
 
         protected override void OnStart(string[] args)
         {
-            //timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
-            //timer.Interval = 60000; //1 minute
-            //timer.Enabled = true;
+            timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
+            timer.Interval = 60000; //1 minute
+            timer.Enabled = true;
         }
 
        
@@ -28,11 +29,11 @@ namespace FlaxCrashReport
         {
             try
             {
-                ml.SendEmail("FCR_SERVICE_STOPPED", "");
+                Logic.MainLogic.SendEmail("FCR_SERVICE_STOPPED", "");
             }
             catch (System.Exception ex)
             {
-                ml.createServiceCrashReport(ex);
+                Logic.MainLogic.CreateServiceCrashReport(ex);
             }
         }
 
@@ -40,11 +41,11 @@ namespace FlaxCrashReport
         {
             try
             {
-                ml.SendCrashData();
+                Logic.MainLogic.SendCrashData();
             }
             catch (System.Exception ex)
             {
-                ml.createServiceCrashReport(ex);
+                Logic.MainLogic.CreateServiceCrashReport(ex);
             }
         }
 
