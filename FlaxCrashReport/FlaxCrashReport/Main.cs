@@ -11,7 +11,7 @@ namespace FlaxCrashReport
         {
             InitializeComponent();
             Logic.MainLogic.SendEmail("FCR_SERVICE_STARTED", "");
-            //DEBUG => uncomment code below!
+            ////DEBUG => uncomment code below!
             //OnElapsedTime(null, null);
             //System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
         }

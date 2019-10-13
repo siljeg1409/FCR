@@ -21,7 +21,7 @@ namespace FlaxCrashReport.Logic
                 if (!File.Exists(file)) continue;
                 JObject o = JObject.Parse(File.ReadAllText(file));
                 Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
-                SendEmail(s.Subject, s.Body, s.Date);
+                SendEmail(s.Subject, s.Body + $"{ Environment.NewLine}{ Environment.NewLine}{ Environment.NewLine} FILE: {Path.GetFileName(file)}", s.Date);
                 MoveToArchive(file);
             }
         }
@@ -113,7 +113,7 @@ namespace FlaxCrashReport.Logic
             if (elgs == null || elgs.Count() < 1) return;
             foreach ( EventLogEntry e in elgs)
             {
-                crashdate = e.TimeGenerated;
+                crashdate = e.TimeWritten;
                 Data.JsonData jd = new Data.JsonData
                 {
                     MachineName = Data.SGeneral.Instance.Settings.MachineName,
@@ -136,7 +136,7 @@ namespace FlaxCrashReport.Logic
         {
             EventLog el = new EventLog("FLAX");
             var ret =  (from EventLogEntry elog in el.Entries
-                    where elog.TimeGenerated > Data.SGeneral.Instance.Settings.LastAppCrash
+                    where elog.TimeWritten > Data.SGeneral.Instance.Settings.LastAppCrash
                     && elog.EntryType == EventLogEntryType.Error
                     orderby elog.TimeGenerated ascending
                     select elog).ToList();
@@ -154,11 +154,7 @@ namespace FlaxCrashReport.Logic
 
         private static void UpdateSettingsJSON(DateTime d, bool fcrcrash = false)
         {
-            string filepath = @"C:\FLAX\Settings\GlobalSettings.json";
-
-            JObject jo = JObject.Parse(File.ReadAllText(filepath));
-            Data.GlobalSettings gs = JsonConvert.DeserializeObject<Data.GlobalSettings>(jo.ToString());
-
+            Data.GlobalSettings gs = Data.SGeneral.Instance.Settings;
             if (fcrcrash)
                 gs.LastServiceCrash = d;
             else
@@ -166,7 +162,6 @@ namespace FlaxCrashReport.Logic
                 gs.Counter += 1;
                 gs.LastAppCrash = d;
             }
-
             var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
 
