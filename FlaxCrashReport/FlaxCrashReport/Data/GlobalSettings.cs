@@ -7,6 +7,9 @@ using System.Threading.Tasks;
 
 namespace FlaxCrashReport.Data
 {
+    /// <summary>
+    /// Main class for GlobalSettigns.json Serialization/Deserialization
+    /// </summary>
     public class GlobalSettings
     {
         #region Private members
@@ -19,6 +22,7 @@ namespace FlaxCrashReport.Data
         private DateTime _lastservicecrash;
         private DateTime _lastappcrash;
         private DateTime _lastflaxcrash;
+        private DateTime _lastokstatus;
         private string _reportspath;
         private string _archivepath;
         #endregion
@@ -136,6 +140,19 @@ namespace FlaxCrashReport.Data
                 if (value != _lastflaxcrash)
                 {
                     _lastflaxcrash = value;
+                }
+            }
+        }
+
+        [JsonProperty("fcr_lastokstatus")]
+        public DateTime LastOKStatus
+        {
+            get { return _lastokstatus; }
+            set
+            {
+                if (value != _lastokstatus)
+                {
+                    _lastokstatus = value;
                 }
             }
         }

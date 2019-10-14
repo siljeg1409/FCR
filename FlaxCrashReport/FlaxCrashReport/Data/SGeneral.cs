@@ -5,6 +5,11 @@ using System.IO;
 
 namespace FlaxCrashReport.Data
 {
+
+    /// <summary>
+    /// Singleton class with global settings
+    /// Loads data from JSON file in (C:\FLAX\Settings\GlobalSettings.json)
+    /// </summary>
     public sealed class SGeneral
     {
 
@@ -39,8 +44,10 @@ namespace FlaxCrashReport.Data
                     {
                         if (instance == null)
                         {
-                            instance = new SGeneral();
-                            instance.Settings = GetSettings();
+                            instance = new SGeneral
+                            {
+                                Settings = GetSettings()
+                            };
                         }
                     }
                 }
@@ -48,6 +55,10 @@ namespace FlaxCrashReport.Data
             }
         }
 
+        /// <summary>
+        /// Reads GlobalSettigns.json file
+        /// </summary>
+        /// <returns></returns>
         private static GlobalSettings GetSettings()
         {
             JObject jo = JObject.Parse(File.ReadAllText(CheckGlobalSettingsFile()));
@@ -55,6 +66,11 @@ namespace FlaxCrashReport.Data
             return JsonConvert.DeserializeObject<GlobalSettings>(jo.ToString());
         }
 
+        /// <summary>
+        /// Checks all necessary folder paths
+        /// Initiates GlobalSettings.json file with default values if needed
+        /// </summary>
+        /// <returns></returns>
         private static string CheckGlobalSettingsFile()
         {
             string settingspath = CheckFolder(@"C:\FLAX\Settings\");
@@ -70,6 +86,7 @@ namespace FlaxCrashReport.Data
                 LastServiceCrash = new DateTime(1990, 9, 14),
                 LastAppCrash = new DateTime(1990, 9, 14),
                 LastFlaxCrash = new DateTime(1990, 9, 14),
+                LastOKStatus = new DateTime(1990, 9, 14),
                 ReportsPath = reportspath,
                 ArchivePath = archivepath,
                 Counter = 1,
@@ -82,6 +99,11 @@ namespace FlaxCrashReport.Data
             return settingsfilepath;
         }
 
+        /// <summary>
+        /// Checks if folder path exists, if not than it will be created
+        /// </summary>
+        /// <param name="path"></param>
+        /// <returns></returns>
         private static string CheckFolder(string path)
         {
             path = Path.GetDirectoryName(path);
