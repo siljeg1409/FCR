@@ -27,12 +27,11 @@ namespace FlaxCrashReport.Logic
                 JObject o = JObject.Parse(File.ReadAllText(file));
                 Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
                 SendEmail(Tuple.Create(s.Subject, s.Body, s.Date, file));
-                MoveToArchive(file);
             }
         }
 
         /// <summary>
-        /// Send email to main FCR email
+        /// Send email to main FCR email, each function call is in new thread to speed the process
         /// Tupe parameters:
         /// Item1 => Subject string
         /// Item2 => Body string
@@ -42,42 +41,45 @@ namespace FlaxCrashReport.Logic
         /// <param name="t"></param>
         public static void SendEmail(Tuple<string, string, DateTime, string> t)
         {
-            string from = Data.SGeneral.Instance.Settings.EmailFrom.Trim();
-            string to = Data.SGeneral.Instance.Settings.EmailTo.Trim();
-            string password = Data.SGeneral.Instance.Settings.Password.Trim();
-            if ( from == "" || to == "" || password == "") return;
-
-            string body =   $"Crash time: {t.Item3.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                            $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
-                            $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
-                            $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
-                            $"{t.Item2} {Environment.NewLine}" +
-                            $"------------------ LOG DATA ------------------";
-
-            var smtp = new SmtpClient
+            new System.Threading.Thread(() =>
             {
-                Host = "smtp.gmail.com",
-                Port = 587,
-                EnableSsl = true,
-                DeliveryMethod = SmtpDeliveryMethod.Network,
-                UseDefaultCredentials = false,
-                Credentials = new NetworkCredential(new MailAddress(from, "FCR Service").Address, password)
+                string from = Data.SGeneral.Instance.Settings.EmailFrom.Trim();
+                string to = Data.SGeneral.Instance.Settings.EmailTo.Trim();
+                string password = Data.SGeneral.Instance.Settings.Password.Trim();
+                if (from == "" || to == "" || password == "") return;
 
-            };
+                string body = $"Crash time: {t.Item3.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
+                                $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
+                                $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
+                                $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
+                                $"{t.Item2} {Environment.NewLine}" +
+                                $"------------------ LOG DATA ------------------";
+
+                var smtp = new SmtpClient
+                {
+                    Host = "smtp.gmail.com",
+                    Port = 587,
+                    EnableSsl = true,
+                    DeliveryMethod = SmtpDeliveryMethod.Network,
+                    UseDefaultCredentials = false,
+                    Credentials = new NetworkCredential(new MailAddress(from, "FCR Service").Address, password)
+
+                };
 
 
-            using (var message = new MailMessage(new MailAddress(from, "FCR Service"), new MailAddress(to, "FCR Report Center"))
-            {
-                Subject = t.Item1,
-                Body = body,
-                Priority = MailPriority.High
-            })
-
-            {
-                if (File.Exists(t.Item4)) message.Attachments.Add(new Attachment(t.Item4));
-                smtp.Send(message);
-                if (t.Item1 == "FCR_OK") UpdateSettingsJSON(Tuple.Create(0, (DateTime?)null, (DateTime?)null, (DateTime?)null, (DateTime?)DateTime.Now));
-            }
+                using (var message = new MailMessage(new MailAddress(from, "FCR Service"), new MailAddress(to, "FCR Report Center"))
+                {
+                    Subject = t.Item1,
+                    Body = body,
+                    Priority = MailPriority.High
+                })
+                {
+                    if (File.Exists(t.Item4)) message.Attachments.Add(new Attachment(t.Item4));
+                    smtp.Send(message);
+                    if (t.Item1 == "FCR_OK") UpdateSettingsJSON(Tuple.Create(0, (DateTime?)null, (DateTime?)null, (DateTime?)null, (DateTime?)DateTime.Now));
+                }
+                if (File.Exists(t.Item4)) MoveToArchive(t.Item4);
+            }).Start();
 
         }
 

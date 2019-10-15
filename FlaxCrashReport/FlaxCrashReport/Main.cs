@@ -63,7 +63,7 @@ namespace FlaxCrashReport
             {
                 Logic.MainLogic.SendCrashData();
                 if (System.DateTime.Now.Hour >= 12 
-                    && System.DateTime.Now.Minute >= 0 
+                    && System.DateTime.Now.Minute >= 0
                     && System.DateTime.Now >= Data.SGeneral.Instance.Settings.LastOKStatus.AddDays(1))
                 {
                     Logic.MainLogic.SendEmail(System.Tuple.Create("FCR_OK", "", System.DateTime.Now, ""));
