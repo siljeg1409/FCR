@@ -66,7 +66,8 @@ namespace FlaxCrashReport
                     && System.DateTime.Now.Minute >= 0
                     && System.DateTime.Now >= Data.SGeneral.Instance.Settings.LastOKStatus.AddDays(1))
                 {
-                    Logic.MainLogic.SendEmail(System.Tuple.Create("FCR_OK", "", System.DateTime.Now, ""));
+                    System.DateTime okDate = System.DateTime.Now.Date.Add(new System.TimeSpan(12, 0, 0));
+                    Logic.MainLogic.SendEmail(System.Tuple.Create("FCR_OK", "", okDate , ""));
                 }
             }
             catch (System.Exception ex)
