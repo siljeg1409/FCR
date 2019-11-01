@@ -57,24 +57,29 @@ namespace FlaxCrashReport.Logic
 
             foreach (EventLogEntry e in eventLogs)
             {
-                Data.JsonData jd = new Data.JsonData
-                {
-                    Category = e.Category.ToString(),
-                    EntityType = e.EntryType.ToString(),
-                    MachineName = e.MachineName ?? Data.SGeneral.Instance.Settings.MachineName,
-                    Message = e.Message.ToString(),
-                    Source = e.Source.ToString(),
-                    TimeGenerated = e.TimeGenerated,
-                    TimeWritten = e.TimeWritten,
-                    UserName = e.UserName ?? Data.SGeneral.Instance.Settings.UserName
-                };
+                Data.CrashData JSONDataObject = GenerateJSONLogData(e);
 
                 var serializerSettings = new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver() };
-                var json = JsonConvert.SerializeObject(jd, serializerSettings);
+                var json = JsonConvert.SerializeObject(JSONDataObject, serializerSettings);
                 string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + e.TimeWritten.ToString("yyyyMMddHHmmss") + ".json";
                 File.WriteAllText(newreport, json);
             }
         }
 
+        public Data.CrashData GenerateJSONLogData(EventLogEntry ele)
+        {
+            return new Data.CrashData
+            {
+                Category = ele.Category.ToString(),
+                EntityType = ele.EntryType.ToString(),
+                MachineName = ele.MachineName ?? Data.SGeneral.Instance.Settings.MachineName,
+                Message = ele.Message.ToString(),
+                Source = ele.Source.ToString(),
+                TimeGenerated = ele.TimeGenerated,
+                TimeWritten = ele.TimeWritten,
+                UserName = ele.UserName ?? Data.SGeneral.Instance.Settings.UserName
+            };
+
+        }
     }
 }

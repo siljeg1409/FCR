@@ -21,16 +21,16 @@ namespace FlaxCrashReport.Logic
         /// </summary>
         public static void ProcessCrashData()
         {
-            CrashData oCrashData = new CrashData();
-            oCrashData.GetEventLogs();
-            oCrashData.GenerateJSONFiles();
-            UpdateSettingsJSON(Tuple.Create(1, (DateTime?)null, crashdateApp, crashdateFlax, (DateTime?)null));
+            CrashProcess oCrashProcess = new CrashProcess();
+            oCrashProcess.GetEventLogs();
+            oCrashProcess.GenerateJSONFiles();
+            //UpdateSettingsJSON(Tuple.Create(1, (DateTime?)null, crashdateApp, crashdateFlax, (DateTime?)null));
 
             foreach (var file in Directory.GetFiles(Data.SGeneral.Instance.Settings.ReportsPath, "*.json"))
             {
                 if (!File.Exists(file)) continue;
                 JObject o = JObject.Parse(File.ReadAllText(file));
-                Data.JsonData s = JsonConvert.DeserializeObject<Data.JsonData>(o.ToString());
+                Data.Crash s = JsonConvert.DeserializeObject<Data.Crash>(o.ToString());
                 SendEmail(Tuple.Create(s.Subject, s.Body, s.Date, file));
             }
         }
@@ -110,12 +110,12 @@ namespace FlaxCrashReport.Logic
             {
                 string filepath = Data.SGeneral.Instance.Settings.ReportsPath + @"\FCR_CRASH.json";
                 if ((Data.SGeneral.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) && File.Exists(filepath)) return;
-                Data.JsonData jd = new Data.JsonData();
+                Data.Crash jd = new Data.Crash();
 
                 if (File.Exists(filepath))
                 {
                     JObject o1 = JObject.Parse(File.ReadAllText(filepath));
-                    jd = JsonConvert.DeserializeObject<Data.JsonData>(o1.ToString());
+                    jd = JsonConvert.DeserializeObject<Data.Crash>(o1.ToString());
                 }
                
 
@@ -183,6 +183,22 @@ namespace FlaxCrashReport.Logic
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
 
         }
-      
-    }
+
+
+        public static Data.Crash GenerateJSONLogData(EventLogEntry ele)
+        {
+            return new Data.Crash
+            {
+                Category = ele.Category.ToString(),
+                EntityType = ele.EntryType.ToString(),
+                MachineName = ele.MachineName ?? Data.SGeneral.Instance.Settings.MachineName,
+                Message = ele.Message.ToString(),
+                Source = ele.Source.ToString(),
+                TimeGenerated = ele.TimeGenerated,
+                TimeWritten = ele.TimeWritten,
+                UserName = ele.UserName ?? Data.SGeneral.Instance.Settings.UserName
+            };
+
+
+        }
 }

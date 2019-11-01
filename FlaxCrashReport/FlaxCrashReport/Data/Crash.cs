@@ -6,7 +6,7 @@ namespace FlaxCrashReport.Data
     /// Main Class for JSON file serialization
     /// TODO: Gather more data here and send thsi file with email as attachment
     /// </summary>
-    public class JsonData
+    public class CrashData
     {
 
         #region Private members
