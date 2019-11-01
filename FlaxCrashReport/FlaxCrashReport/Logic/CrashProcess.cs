@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 
 namespace FlaxCrashReport.Logic
 {
-    public class CrashData
+    public class CrashProcess
     {
         #region Private members
         private List<EventLogEntry> eventLogs;
@@ -19,9 +19,9 @@ namespace FlaxCrashReport.Logic
         private string userName;
         #endregion
 
-        public CrashData()
+        public CrashProcess()
         {
-            machineName = Data.SGeneral.Instance.Settings.MachineName,;
+            machineName = Data.SGeneral.Instance.Settings.MachineName;
             userName = Data.SGeneral.Instance.Settings.UserName;
             lastApplicationCrashTime = Data.SGeneral.Instance.Settings.LastAppCrash;
         }
@@ -57,28 +57,16 @@ namespace FlaxCrashReport.Logic
 
             foreach (EventLogEntry e in eventLogs)
             {
-                Data.CrashData JSONDataObject = GenerateJSONLogData(e);
+                Data.Crash oCrash = MainLogic.GenerateJSONLogData(e);
 
                 var serializerSettings = new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver() };
-                var json = JsonConvert.SerializeObject(JSONDataObject, serializerSettings);
+                var json = JsonConvert.SerializeObject(oCrash, serializerSettings);
                 string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + e.TimeWritten.ToString("yyyyMMddHHmmss") + ".json";
                 File.WriteAllText(newreport, json);
             }
         }
 
-        public Data.CrashData GenerateJSONLogData(EventLogEntry ele)
-        {
-            return new Data.CrashData
-            {
-                Category = ele.Category.ToString(),
-                EntityType = ele.EntryType.ToString(),
-                MachineName = ele.MachineName ?? Data.SGeneral.Instance.Settings.MachineName,
-                Message = ele.Message.ToString(),
-                Source = ele.Source.ToString(),
-                TimeGenerated = ele.TimeGenerated,
-                TimeWritten = ele.TimeWritten,
-                UserName = ele.UserName ?? Data.SGeneral.Instance.Settings.UserName
-            };
+        
 
         }
     }

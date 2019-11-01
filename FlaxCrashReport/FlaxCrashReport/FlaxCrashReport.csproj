@@ -53,10 +53,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Data\GlobalSettings.cs" />
-    <Compile Include="Data\JsonData.cs" />
+    <Compile Include="Data\Crash.cs" />
     <Compile Include="Data\SGeneral.cs" />
     <Compile Include="Enumerations\EEmailStatus.cs" />
-    <Compile Include="Logic\CrashData.cs" />
+    <Compile Include="Logic\CrashProcess.cs" />
     <Compile Include="Logic\Email.cs" />
     <Compile Include="Logic\MainLogic.cs" />
     <Compile Include="Main.cs">
