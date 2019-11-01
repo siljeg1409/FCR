@@ -10,69 +10,108 @@ namespace FlaxCrashReport.Data
     {
 
         #region Private members
-        private DateTime _Date;
-        private string _MachineName;
-        private string _UserName;
-        private string _Subject;
-        private string _Body;
+        private string category;
+        private string entityType;
+        private string machineName;
+        private string message;
+        private string source;
+        private DateTime timeGenerated;
+        private DateTime timeWritten;
+        private string userName;
         #endregion
 
-        public string Subject
+        public string Category
         {
-            get { return _Subject; }
+            get { return category; }
             set
             {
-                if (value != _Subject)
+                if (value != category)
                 {
-                    _Subject = value;
+                    category = value;
                 }
             }
         }
 
-        public string Body
+        public string EntityType
         {
-            get { return _Body; }
+            get { return entityType; }
             set
             {
-                if (value != _Body)
+                if (value != entityType)
                 {
-                    _Body = value;
-                }
-            }
-        }
-
-        public DateTime Date
-        {
-            get { return _Date; }
-            set
-            {
-                if (value != _Date)
-                {
-                    _Date = value;
+                    entityType = value;
                 }
             }
         }
 
         public string MachineName
         {
-            get { return _MachineName; }
+            get { return machineName; }
             set
             {
-                if (value != _MachineName)
+                if (value != machineName)
                 {
-                    _MachineName = value;
+                    machineName = value;
+                }
+            }
+        }
+
+        public string Message
+        {
+            get { return message; }
+            set
+            {
+                if (value != message)
+                {
+                    message = value;
+                }
+            }
+        }
+
+        public string Source
+        {
+            get { return source; }
+            set
+            {
+                if (value != source)
+                {
+                    source = value;
+                }
+            }
+        }
+
+        public DateTime TimeGenerated
+        {
+            get { return timeGenerated; }
+            set
+            {
+                if (value != timeGenerated)
+                {
+                    timeGenerated = value;
+                }
+            }
+        }
+
+        public DateTime TimeWritten
+        {
+            get { return timeWritten; }
+            set
+            {
+                if (value != timeWritten)
+                {
+                    timeWritten = value;
                 }
             }
         }
 
         public string UserName
         {
-            get { return _UserName; }
+            get { return userName; }
             set
             {
-                if (value != _UserName)
+                if (value != userName)
                 {
-                    _UserName = value;
+                    userName = value;
                 }
             }
         }

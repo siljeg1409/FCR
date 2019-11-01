@@ -13,14 +13,19 @@ namespace FlaxCrashReport.Logic
 {
     public static class MainLogic
     {
+      
         /// <summary>
         /// Creates JSON(s) from EventViewer
         /// Sends all JSON(s) from Reports folder to FCR email
         /// Moves sent JSONs to Archive folder
         /// </summary>
-        public static void SendCrashData()
+        public static void ProcessCrashData()
         {
-            GenerateJSONs();
+            CrashData oCrashData = new CrashData();
+            oCrashData.GetEventLogs();
+            oCrashData.GenerateJSONFiles();
+            UpdateSettingsJSON(Tuple.Create(1, (DateTime?)null, crashdateApp, crashdateFlax, (DateTime?)null));
+
             foreach (var file in Directory.GetFiles(Data.SGeneral.Instance.Settings.ReportsPath, "*.json"))
             {
                 if (!File.Exists(file)) continue;
@@ -83,6 +88,17 @@ namespace FlaxCrashReport.Logic
 
         }
 
+        internal static void CheckForServiceStatus()
+        {
+            if (DateTime.Now.Hour >= 12
+                   && DateTime.Now.Minute >= 0
+                   && DateTime.Now >= Data.SGeneral.Instance.Settings.LastOKStatus.AddDays(1))
+            {
+                DateTime okDate = DateTime.Now.Date.Add(new TimeSpan(12, 0, 0));
+                SendEmail(Tuple.Create("FCR_OK", "", okDate, ""));
+            }
+        }
+
         /// <summary>
         /// Makes FCR_CRASH.json if not exist or older than 24Hours to prevent email spamming 
         /// Updates global Settings JSON about last FCR_CRASH email sent
@@ -127,70 +143,9 @@ namespace FlaxCrashReport.Logic
            
         }
 
-        /// <summary>
-        /// Collects data from EventViewer and makes JSON files in Reports folder to be send by email
-        /// This functions 
-        /// </summary>
-        private static void GenerateJSONs()
-        {
-            DateTime? crashdateFlax = null;
-            DateTime? crashdateApp = null;
+       
 
-            List<EventLogEntry> elgs = GetLogData();
-            if (elgs == null || elgs.Count() < 1) return;
-            foreach ( EventLogEntry e in elgs)
-            {
-                if (e.Source == "FLAX")
-                    crashdateFlax = e.TimeWritten;
-                else
-                    crashdateApp = e.TimeWritten;
-
-                Data.JsonData jd = new Data.JsonData
-                {
-                    MachineName = Data.SGeneral.Instance.Settings.MachineName,
-                    UserName = Data.SGeneral.Instance.Settings.UserName,
-                    Date = e.TimeWritten,
-                    Subject = "CRASH_REPORT: " + Data.SGeneral.Instance.Settings.Counter++,
-                    Body = e.Message.ToString()
-                };
-
-                var serializerSettings = new JsonSerializerSettings
-                {
-                    ContractResolver = new CamelCasePropertyNamesContractResolver()
-                };
-                var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + e.TimeWritten.ToString("yyyyMMddHHmmss") + ".json";
-                File.WriteAllText(newreport, json);
-            }
-            UpdateSettingsJSON(Tuple.Create(1, (DateTime?)null, crashdateApp, crashdateFlax, (DateTime?)null));
-        }
-
-        /// <summary>
-        /// Get all logs from System EventViewer made by Flax or System itself
-        /// </summary>
-        /// <returns>List of EventLogEntrys for specific app</returns>
-        private static List<EventLogEntry> GetLogData()
-        {
-            // This is the log that is created by a Flax software
-            EventLog el1 = new EventLog("FLAX");
-            var FlaxLog =  (from EventLogEntry elog in el1.Entries
-                    where elog.TimeWritten > Data.SGeneral.Instance.Settings.LastFlaxCrash
-                    && elog.EntryType == EventLogEntryType.Error
-                    orderby elog.TimeGenerated ascending
-                    select elog).ToList();
-
-            // The rest of logs that is created by the System
-            EventLog el2 = new EventLog("Application");
-            var AppLog = (from EventLogEntry elog in el2.Entries
-                       where elog.TimeWritten > Data.SGeneral.Instance.Settings.LastAppCrash
-                       && elog.Message.ToString().Contains("Application: Users.exe")
-                       && elog.EntryType == EventLogEntryType.Error
-                       orderby elog.TimeGenerated ascending
-                       select elog).ToList();
-
-            return FlaxLog.Union(AppLog).ToList();
-
-        }
+       
 
         /// <summary>
         /// Moves file to archive (C:\FLAX\Services\FCR\Archive\)
