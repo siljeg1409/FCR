@@ -13,7 +13,28 @@ namespace FlaxCrashReport.Logic
 {
     public static class MainLogic
     {
-      
+
+
+        internal static void CheckAndProcessLogs()
+        {
+            try
+            {
+                using (CrashProcess oCrashProcess = new CrashProcess())
+                {
+                    oCrashProcess.ProcessEventLogsIntoJSONFiles();
+                };
+
+                //ProcessCrashData();
+                //CheckForServiceStatus();
+            }
+            catch (Exception ex)
+            {
+                //CreateServiceCrashReport(ex);
+            }
+        }
+
+
+
         /// <summary>
         /// Creates JSON(s) from EventViewer
         /// Sends all JSON(s) from Reports folder to FCR email
@@ -21,12 +42,9 @@ namespace FlaxCrashReport.Logic
         /// </summary>
         public static void ProcessCrashData()
         {
-            CrashProcess oCrashProcess = new CrashProcess();
-            oCrashProcess.GetEventLogs();
-            oCrashProcess.GenerateJSONFiles();
             //UpdateSettingsJSON(Tuple.Create(1, (DateTime?)null, crashdateApp, crashdateFlax, (DateTime?)null));
 
-            foreach (var file in Directory.GetFiles(Data.SGeneral.Instance.Settings.ReportsPath, "*.json"))
+            foreach (var file in Directory.GetFiles(Data.Settings.Instance.Settings.ReportsPath, "*.json"))
             {
                 if (!File.Exists(file)) continue;
                 JObject o = JObject.Parse(File.ReadAllText(file));
@@ -48,14 +66,14 @@ namespace FlaxCrashReport.Logic
         {
             new System.Threading.Thread(() =>
             {
-                string from = Data.SGeneral.Instance.Settings.EmailFrom.Trim();
-                string to = Data.SGeneral.Instance.Settings.EmailTo.Trim();
-                string password = Data.SGeneral.Instance.Settings.Password.Trim();
+                string from = Data.Settings.Instance.Settings.EmailFrom.Trim();
+                string to = Data.Settings.Instance.Settings.EmailTo.Trim();
+                string password = Data.Settings.Instance.Settings.Password.Trim();
                 if (from == "" || to == "" || password == "") return;
 
                 string body = $"Crash time: {t.Item3.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                                $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
-                                $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
+                                $"Machine: {Data.Settings.Instance.Settings.MachineName} {Environment.NewLine}" +
+                                $"Username: {Data.Settings.Instance.Settings.UserName} {Environment.NewLine}" +
                                 $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
                                 $"{t.Item2} {Environment.NewLine}" +
                                 $"------------------ LOG DATA ------------------";
@@ -88,11 +106,15 @@ namespace FlaxCrashReport.Logic
 
         }
 
+       
+
+    
+
         internal static void CheckForServiceStatus()
         {
             if (DateTime.Now.Hour >= 12
                    && DateTime.Now.Minute >= 0
-                   && DateTime.Now >= Data.SGeneral.Instance.Settings.LastOKStatus.AddDays(1))
+                   && DateTime.Now >= Data.Settings.LastOKStatus.AddDays(1))
             {
                 DateTime okDate = DateTime.Now.Date.Add(new TimeSpan(12, 0, 0));
                 SendEmail(Tuple.Create("FCR_OK", "", okDate, ""));
@@ -108,8 +130,8 @@ namespace FlaxCrashReport.Logic
         {
             try
             {
-                string filepath = Data.SGeneral.Instance.Settings.ReportsPath + @"\FCR_CRASH.json";
-                if ((Data.SGeneral.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) && File.Exists(filepath)) return;
+                string filepath = Data.Settings.Instance.Settings.ReportsPath + @"\FCR_CRASH.json";
+                if ((Data.Settings.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) && File.Exists(filepath)) return;
                 Data.Crash jd = new Data.Crash();
 
                 if (File.Exists(filepath))
@@ -119,8 +141,8 @@ namespace FlaxCrashReport.Logic
                 }
                
 
-                jd.MachineName = Data.SGeneral.Instance.Settings.MachineName;
-                jd.UserName = Data.SGeneral.Instance.Settings.UserName;
+                jd.MachineName = Data.Settings.Instance.Settings.MachineName;
+                jd.UserName = Data.Settings.Instance.Settings.UserName;
                 jd.Date = DateTime.Now;
                 jd.Subject = "FCR_CRASH_REPORT";
                 jd.Body = ex.StackTrace;
@@ -154,7 +176,7 @@ namespace FlaxCrashReport.Logic
         /// <param name="file">Path of the file to be moved to archive</param>
         private static void MoveToArchive(string file)
         {
-            string tmpFile = Data.SGeneral.Instance.Settings.ArchivePath + @"\" + Path.GetFileName(file);
+            string tmpFile = Data.Settings.Instance.Settings.ArchivePath + @"\" + Path.GetFileName(file);
             if (File.Exists(tmpFile)) File.Delete(tmpFile);
             File.Move(file, tmpFile);
         }
@@ -171,7 +193,7 @@ namespace FlaxCrashReport.Logic
         /// <param name="t"></param>
         private static void UpdateSettingsJSON(Tuple<int, DateTime?, DateTime?, DateTime?, DateTime?> t)
         {
-            Data.GlobalSettings gs = Data.SGeneral.Instance.Settings;
+            Data.Setting gs = Data.Settings.Instance.Settings;
 
             gs.Counter += t.Item1;
             gs.LastServiceCrash = t.Item2 ?? gs.LastServiceCrash;
@@ -185,20 +207,5 @@ namespace FlaxCrashReport.Logic
         }
 
 
-        public static Data.Crash GenerateJSONLogData(EventLogEntry ele)
-        {
-            return new Data.Crash
-            {
-                Category = ele.Category.ToString(),
-                EntityType = ele.EntryType.ToString(),
-                MachineName = ele.MachineName ?? Data.SGeneral.Instance.Settings.MachineName,
-                Message = ele.Message.ToString(),
-                Source = ele.Source.ToString(),
-                TimeGenerated = ele.TimeGenerated,
-                TimeWritten = ele.TimeWritten,
-                UserName = ele.UserName ?? Data.SGeneral.Instance.Settings.UserName
-            };
-
-
-        }
+        
 }

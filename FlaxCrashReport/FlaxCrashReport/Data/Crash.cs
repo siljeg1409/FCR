@@ -51,7 +51,7 @@ namespace FlaxCrashReport.Data
             {
                 if (value != machineName)
                 {
-                    machineName = value;
+                    machineName = value ?? Settings.Instance.Settings.MachineName;
                 }
             }
         }
@@ -111,7 +111,7 @@ namespace FlaxCrashReport.Data
             {
                 if (value != userName)
                 {
-                    userName = value;
+                    userName = value ?? Settings.Instance.Settings.UserName;
                 }
             }
         }

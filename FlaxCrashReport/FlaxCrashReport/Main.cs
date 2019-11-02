@@ -59,15 +59,7 @@ namespace FlaxCrashReport
         /// <param name="e"></param>
         private void OnElapsedTime(object source, ElapsedEventArgs e)
         {
-            try
-            {
-                Logic.MainLogic.ProcessCrashData();
-                Logic.MainLogic.CheckForServiceStatus();
-            }
-            catch (System.Exception ex)
-            {
-                Logic.MainLogic.CreateServiceCrashReport(ex);
-            }
+            Logic.MainLogic.CheckAndProcessLogs();
         }
 
     }

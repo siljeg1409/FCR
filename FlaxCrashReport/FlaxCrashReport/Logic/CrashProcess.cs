@@ -1,50 +1,59 @@
-﻿using Newtonsoft.Json;
+﻿using Microsoft.Win32.SafeHandles;
+using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+using System.Runtime.InteropServices;
 
 namespace FlaxCrashReport.Logic
 {
-    public class CrashProcess
+    public class CrashProcess : IDisposable
     {
         #region Private members
-        private List<EventLogEntry> eventLogs;
-        private DateTime lastApplicationCrashTime;
-        private string machineName;
-        private string userName;
+        private bool _disposed = false;
+        private SafeHandle handle = new SafeFileHandle(IntPtr.Zero, true);
+        private List<EventLogEntry> _eventLogs;
+        private DateTime _lastApplicationCrashTime;
+        private string _machineName;
+        private string _userName;
         #endregion
 
         public CrashProcess()
         {
-            machineName = Data.SGeneral.Instance.Settings.MachineName;
-            userName = Data.SGeneral.Instance.Settings.UserName;
-            lastApplicationCrashTime = Data.SGeneral.Instance.Settings.LastAppCrash;
+            _machineName = Data.Settings.MachineName;
+            _userName = Data.Settings.UserName;
+            _lastApplicationCrashTime = Data.Settings.LastAppCrash;
         }
 
         /// <summary>
-        /// Get all logs from System EventViewer made by Flax or System itself
+        /// Get all logs from System EventViewer made by System
+        /// Generate JSON files on the global path
         /// </summary>
-        public void GetEventLogs()
+        public void ProcessEventLogsIntoJSONFiles()
         {
-
-            EventLog el2 = new EventLog("Application");
-            eventLogs = (from EventLogEntry elog in el2.Entries
-                          where elog.TimeWritten > lastApplicationCrashTime
-                          && elog.Message.ToString().Contains("Application: Users.exe") // <---- I know it's ugly
-                          && elog.EntryType == EventLogEntryType.Error
-                          orderby elog.TimeWritten ascending
-                          select elog).ToList();
+            _eventLogs = GetEventLogs();
+            if (_eventLogs == null || _eventLogs.Count() < 1) return;
+            SetLastApplicationCrashTime();
+            GenerateJSONFiles();
         }
 
-        public void SetLastApplicationCrashTime()
+        private List<EventLogEntry> GetEventLogs()
         {
-            if (eventLogs == null || eventLogs.Count() < 1) return;
-            lastApplicationCrashTime = eventLogs.Max(m => m.TimeWritten);
+            EventLog el2 = new EventLog("Application");
+            return (from EventLogEntry elog in el2.Entries
+                         where elog.TimeWritten > _lastApplicationCrashTime
+                         && elog.Message.ToString().Contains("Application: Users.exe") // <---- I know it's ugly
+                         && elog.EntryType == EventLogEntryType.Error
+                         orderby elog.TimeWritten ascending
+                         select elog).ToList();
+        }
+
+        private void SetLastApplicationCrashTime()
+        {
+            _lastApplicationCrashTime = _eventLogs.Max(m => m.TimeWritten);
         }
 
 
@@ -52,22 +61,57 @@ namespace FlaxCrashReport.Logic
         /// Collects data from EventViewer and makes JSON files in Reports folder to be send by email
         /// This functions 
         /// </summary>
-        public void GenerateJSONFiles()
+        private void GenerateJSONFiles()
         {
 
-            foreach (EventLogEntry e in eventLogs)
+            foreach (EventLogEntry e in _eventLogs)
             {
-                Data.Crash oCrash = MainLogic.GenerateJSONLogData(e);
+                Data.Crash oCrash = GenerateJSONLogData(e);
 
                 var serializerSettings = new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver() };
                 var json = JsonConvert.SerializeObject(oCrash, serializerSettings);
-                string newreport = Data.SGeneral.Instance.Settings.ReportsPath + @"\Report_" + e.TimeWritten.ToString("yyyyMMddHHmmss") + ".json";
+                string newreport = $"{Data.Settings.ReportsPath}\\Report_{e.TimeWritten.ToString("yyyyMMddHHmmss")}.json";
+
                 File.WriteAllText(newreport, json);
             }
         }
 
-        
-
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="ele"></param>
+        /// <returns></returns>
+        private Data.Crash GenerateJSONLogData(EventLogEntry ele)
+        {
+            return new Data.Crash
+            {
+                Category = ele.Category.ToString(),
+                EntityType = ele.EntryType.ToString(),
+                MachineName = ele.MachineName,
+                Message = ele.Message.ToString(),
+                Source = ele.Source.ToString(),
+                TimeGenerated = ele.TimeGenerated,
+                TimeWritten = ele.TimeWritten,
+                UserName = ele.UserName
+            };
         }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_disposed) return;
+
+            if (disposing)
+            {
+                handle.Dispose();
+            }
+            _disposed = true;
+        }
+
     }
 }

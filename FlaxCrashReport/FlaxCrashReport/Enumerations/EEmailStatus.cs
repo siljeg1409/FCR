@@ -12,7 +12,9 @@ namespace FlaxCrashReport.Enumerations
         {
             OK = 0,
             APP_CRASH = 1,
-            FCR_CRASH = 2
+            FCR_CRASH = 2,
+            FCR_STARTED = 3,
+            FCR_STOPPED = 4
         }
 
     }
