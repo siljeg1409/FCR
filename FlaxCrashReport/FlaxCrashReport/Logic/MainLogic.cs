@@ -24,6 +24,11 @@ namespace FlaxCrashReport.Logic
                     oCrashProcess.ProcessEventLogsIntoJSONFiles();
                 };
 
+                using (EmailProcess oEmailProcess = new EmailProcess())
+                {
+                    oEmailProcess.ProcessAndSendEmails();
+                }
+
                 //ProcessCrashData();
                 //CheckForServiceStatus();
             }
@@ -34,24 +39,6 @@ namespace FlaxCrashReport.Logic
         }
 
 
-
-        /// <summary>
-        /// Creates JSON(s) from EventViewer
-        /// Sends all JSON(s) from Reports folder to FCR email
-        /// Moves sent JSONs to Archive folder
-        /// </summary>
-        public static void ProcessCrashData()
-        {
-            //UpdateSettingsJSON(Tuple.Create(1, (DateTime?)null, crashdateApp, crashdateFlax, (DateTime?)null));
-
-            foreach (var file in Directory.GetFiles(Data.Settings.Instance.Settings.ReportsPath, "*.json"))
-            {
-                if (!File.Exists(file)) continue;
-                JObject o = JObject.Parse(File.ReadAllText(file));
-                Data.Crash s = JsonConvert.DeserializeObject<Data.Crash>(o.ToString());
-                SendEmail(Tuple.Create(s.Subject, s.Body, s.Date, file));
-            }
-        }
 
         /// <summary>
         /// Send email to main FCR email, each function call is in new thread to speed the process
