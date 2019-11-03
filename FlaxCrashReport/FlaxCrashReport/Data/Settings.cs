@@ -15,20 +15,19 @@ namespace FlaxCrashReport.Data
 
         #region Private members
         private static int _counter;
+        private static int _intevalMinutes;
         private static string _machinename;
         private static string _username;
         private static string _passwordFrom;
         private static string _emailTo;
         private static string _emailFrom;
-        private static DateTime _lastservicecrash;
         private static DateTime _lastappcrash;
-        private static DateTime _lastokstatus;
         private static string _reportspath;
         private static string _archivepath;
         #endregion
 
         [JsonProperty("fcr_emailfrom")]
-        public static string EmailFrom
+        public string EmailFrom
         {
             get { return _emailFrom; }
             set
@@ -41,7 +40,7 @@ namespace FlaxCrashReport.Data
         }
 
         [JsonProperty("machinename")]
-        public static string MachineName
+        public string MachineName
         {
             get { return _machinename; }
             set
@@ -54,7 +53,7 @@ namespace FlaxCrashReport.Data
         }
 
         [JsonProperty("username")]
-        public static string UserName
+        public string UserName
         {
             get { return _username; }
             set
@@ -67,7 +66,7 @@ namespace FlaxCrashReport.Data
         }
 
         [JsonProperty("fcr_emailto")]
-        public static string EmailTo
+        public string EmailTo
         {
             get { return _emailTo; }
             set
@@ -80,7 +79,7 @@ namespace FlaxCrashReport.Data
         }
 
         [JsonProperty("fcr_password")]
-        public static string Password
+        public string Password
         {
             get { return _passwordFrom; }
             set
@@ -93,7 +92,7 @@ namespace FlaxCrashReport.Data
         }
 
         [JsonProperty("fcr_counter")]
-        public static int Counter
+        public int Counter
         {
             get { return _counter; }
             set
@@ -105,21 +104,21 @@ namespace FlaxCrashReport.Data
             }
         }
 
-        [JsonProperty("fcr_lastservicecrash")]
-        public static DateTime LastServiceCrash
+        [JsonProperty("fcr_interval")]
+        public int Interval
         {
-            get { return _lastservicecrash; }
+            get { return _intevalMinutes; }
             set
             {
-                if (value != _lastservicecrash)
+                if (value != _intevalMinutes)
                 {
-                    _lastservicecrash = value;
+                    _intevalMinutes = value;
                 }
             }
         }
 
         [JsonProperty("fcr_lastappcrash")]
-        public static DateTime LastAppCrash
+        public DateTime LastAppCrash
         {
             get { return _lastappcrash; }
             set
@@ -131,21 +130,8 @@ namespace FlaxCrashReport.Data
             }
         }
 
-        [JsonProperty("fcr_lastokstatus")]
-        public static DateTime LastOKStatus
-        {
-            get { return _lastokstatus; }
-            set
-            {
-                if (value != _lastokstatus)
-                {
-                    _lastokstatus = value;
-                }
-            }
-        }
-
         [JsonProperty("fcr_reportspath")]
-        public static string ReportsPath
+        public string ReportsPath
         {
             get { return _reportspath; }
             set
@@ -158,7 +144,7 @@ namespace FlaxCrashReport.Data
         }
 
         [JsonProperty("fcr_archivepath")]
-        public static string ArchivePath
+        public string ArchivePath
         {
             get { return _archivepath; }
             set
@@ -219,17 +205,16 @@ namespace FlaxCrashReport.Data
             string settingsfilepath = @"C:\FLAX\Settings\GlobalSettings.json";
             if (File.Exists(settingsfilepath)) return settingsfilepath;
 
-            MachineName = Environment.MachineName;
-            UserName = System.Security.Principal.WindowsIdentity.GetCurrent().Name;
-            LastServiceCrash = new DateTime(1990, 9, 14);
-            LastAppCrash = new DateTime(1990, 9, 14);
-            LastOKStatus = new DateTime(1990, 9, 14);
-            ReportsPath = reportspath;
-            ArchivePath = archivepath;
-            Counter = 1;
-            EmailFrom = "";
-            EmailTo = "";
-            Password = "";
+            Instance.MachineName = Environment.MachineName;
+            Instance.UserName = Environment.UserName; // System.Security.Principal.WindowsIdentity.GetCurrent().Name;
+            Instance.LastAppCrash = DateTime.Now.AddDays(-1); // i don't want to send all logs from the beginning of the time
+            Instance.ReportsPath = reportspath;
+            Instance.ArchivePath = archivepath;
+            Instance.Counter = 1;
+            Instance.Interval = 10;
+            Instance.EmailFrom = "";
+            Instance.EmailTo = "";
+            Instance.Password = "";
 
             var json = JsonConvert.SerializeObject(Instance, Formatting.Indented);
             File.WriteAllText(settingspath + @"\GlobalSettings.json", json);

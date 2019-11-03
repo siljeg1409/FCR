@@ -54,7 +54,7 @@
   <ItemGroup>
     <Compile Include="Data\Crash.cs" />
     <Compile Include="Data\Settings.cs" />
-    <Compile Include="Enumerations\EEmailStatus.cs" />
+    <Compile Include="Enumerations\EStatus.cs" />
     <Compile Include="Logic\CrashProcess.cs" />
     <Compile Include="Data\Email.cs" />
     <Compile Include="Logic\EmailProcess.cs" />

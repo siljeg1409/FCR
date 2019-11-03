@@ -14,9 +14,9 @@ namespace FlaxCrashReport
         public Main()
         {
             InitializeComponent();
-            ////DEBUG => uncomment code below!
-            //OnElapsedTime(null, null);
-            //System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
+            //DEBUG => uncomment code below!
+            OnElapsedTime(null, null);
+            System.Threading.Thread.Sleep(System.Threading.Timeout.Infinite);
         }
 
         /// <summary>
@@ -27,9 +27,9 @@ namespace FlaxCrashReport
         /// <param name="args"></param>
         protected override void OnStart(string[] args)
         {
-            Logic.MainLogic.SendEmail(System.Tuple.Create("FCR_STARTED", "", System.DateTime.Now, ""));
+            Logic.MainLogic.CreateAndSendFCREmail("Service started.", Enumerations.EStatus.EmailSubjectStatus.FCR_STARTED);
             timer.Elapsed += new ElapsedEventHandler(OnElapsedTime);
-            timer.Interval = 60000; //1 minute
+            timer.Interval = System.TimeSpan.FromMinutes(Data.Settings.Instance.Interval).TotalMilliseconds;
             timer.Enabled = true;
         }
 
@@ -39,14 +39,7 @@ namespace FlaxCrashReport
         /// </summary>
         protected override void OnStop()
         {
-            try
-            {
-                Logic.MainLogic.SendEmail(System.Tuple.Create("FCR_STOPPED", "", System.DateTime.Now, ""));
-            }
-            catch (System.Exception ex)
-            {
-                Logic.MainLogic.CreateServiceCrashReport(ex);
-            }
+            Logic.MainLogic.CreateAndSendFCREmail("Service stopped.", Enumerations.EStatus.EmailSubjectStatus.FCR_STOPPED);
         }
 
         /// <summary>

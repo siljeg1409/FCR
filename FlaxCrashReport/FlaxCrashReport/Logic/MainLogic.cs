@@ -29,71 +29,81 @@ namespace FlaxCrashReport.Logic
                     oEmailProcess.ProcessAndSendEmails();
                 }
 
+                //THIS WILL ONLY EXECUTE IF ALL JSON FILES ARE SEND VIA EMAIL
                 //UPDATE JSON FILE FROM SETTINGS
-                //MOVE ZIP FILES TO ARCHIVE
+                //MOVE ZIP FILES TO ARCHIVE 
                 //DELETE JSONs
+                //SEND JSON OK STATUS
 
             }
             catch (Exception ex)
             {
-                //CreateServiceCrashReport(ex);
+                CreateAndSendFCREmail(ex.StackTrace, Enumerations.EStatus.EmailSubjectStatus.FCR_CRASH_REPORT);
             }
         }
 
-
-
-
-        internal static void CheckForServiceStatus()
+        public static void CreateAndSendFCREmail(string message, Enumerations.EStatus.EmailSubjectStatus subjectStatus)
         {
-            if (DateTime.Now.Hour >= 12
-                   && DateTime.Now.Minute >= 0
-                   && DateTime.Now >= Data.Settings.LastOKStatus.AddDays(1))
+            try
             {
-                DateTime okDate = DateTime.Now.Date.Add(new TimeSpan(12, 0, 0));
-                SendEmail(Tuple.Create("FCR_OK", "", okDate, ""));
+                Data.Email email = new Data.Email
+                {
+                    EmailSubject = $"{subjectStatus.ToString()} : {++Data.Settings.Instance.Counter}",
+                    EmailBody = $"Crash time: {DateTime.Now}{Environment.NewLine}" +
+                          $"Machine: {Data.Settings.Instance.MachineName}{Environment.NewLine}" +
+                          $"User: {Data.Settings.Instance.UserName}{Environment.NewLine}" +
+                          $"Message: {Environment.NewLine} {message}"
+                };
+
+                using (EmailProcess oEmailProcess = new EmailProcess())
+                {
+                    oEmailProcess.SendEmail(email);
+                }
             }
+            catch (Exception ex)
+            {
+                CreateServiceCrashReportJSON($"Original message:{Environment.NewLine}{message}{Environment.NewLine}Send email failed:{Environment.NewLine}{ex.StackTrace}");
+            }
+
         }
+
 
         /// <summary>
         /// Makes FCR_CRASH.json if not exist or older than 24Hours to prevent email spamming 
         /// Updates global Settings JSON about last FCR_CRASH email sent
         /// </summary>
         /// <param name="ex">Global exception thrown by the service</param>
-        public static void CreateServiceCrashReport(Exception ex)
+        public static void CreateServiceCrashReportJSON(string message)
         {
             try
             {
-                string filepath = Data.Settings.Instance.Settings.ReportsPath + @"\FCR_CRASH.json";
-                if ((Data.Settings.Instance.Settings.LastServiceCrash.AddDays(1) > DateTime.Now) && File.Exists(filepath)) return;
-                Data.Crash jd = new Data.Crash();
+                string serviceCrashJSONFile = $"{Data.Settings.Instance.ReportsPath}\\FCR_CRASH.json";
 
-                if (File.Exists(filepath))
+                Data.Crash oCrash = new Data.Crash
                 {
-                    JObject o1 = JObject.Parse(File.ReadAllText(filepath));
-                    jd = JsonConvert.DeserializeObject<Data.Crash>(o1.ToString());
-                }
-
-
-                jd.MachineName = Data.Settings.Instance.Settings.MachineName;
-                jd.UserName = Data.Settings.Instance.Settings.UserName;
-                jd.Date = DateTime.Now;
-                jd.Subject = "FCR_CRASH_REPORT";
-                jd.Body = ex.StackTrace;
+                    Category = "FCR",
+                    EntityType = "FCR",
+                    MachineName = Data.Settings.Instance.MachineName,
+                    Message = message,
+                    Source = "FlaxCrashReport",
+                    TimeGenerated = DateTime.Now,
+                    TimeWritten = DateTime.Now,
+                    UserName = Data.Settings.Instance.UserName,
+                    CrashCounter = ++Data.Settings.Instance.Counter
+                };
 
                 var serializerSettings = new JsonSerializerSettings
                 {
                     ContractResolver = new CamelCasePropertyNamesContractResolver()
                 };
-                var json = JsonConvert.SerializeObject(jd, serializerSettings);
-                File.WriteAllText(filepath, json);
-                UpdateSettingsJSON(Tuple.Create(0, (DateTime?)DateTime.Now, (DateTime?)null, (DateTime?)null, (DateTime?)null));
-
+                var json = JsonConvert.SerializeObject(oCrash, serializerSettings);
+                File.WriteAllText(serviceCrashJSONFile, json);
 
             }
             catch (Exception)
             {
                 // To prevent infinite loops and email spamming
-                // Information (crash) will be lost here
+                // Information (crash) could be lost here
             }
 
         }
@@ -109,7 +119,7 @@ namespace FlaxCrashReport.Logic
         /// <param name="file">Path of the file to be moved to archive</param>
         private static void MoveToArchive(string file)
         {
-            string tmpFile = Data.Settings.Instance.Settings.ArchivePath + @"\" + Path.GetFileName(file);
+            string tmpFile = Data.Settings.Instance.ArchivePath + @"\" + Path.GetFileName(file);
             if (File.Exists(tmpFile)) File.Delete(tmpFile);
             File.Move(file, tmpFile);
         }
@@ -126,10 +136,8 @@ namespace FlaxCrashReport.Logic
         /// <param name="t"></param>
         private static void UpdateSettingsJSON(Tuple<int, DateTime?, DateTime?, DateTime?, DateTime?> t)
         {
-
-            var json = JsonConvert.SerializeObject(Data.Settings, Formatting.Indented);
+            var json = JsonConvert.SerializeObject(Data.Settings.Instance, Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
-
         }
 
     }

@@ -24,10 +24,10 @@ namespace FlaxCrashReport.Logic
 
         public CrashProcess()
         {
-            _machineName = Data.Settings.MachineName;
-            _userName = Data.Settings.UserName;
-            _lastApplicationCrashTime = Data.Settings.LastAppCrash;
-            _crashCounter = Data.Settings.Counter;
+            _machineName = Data.Settings.Instance.MachineName;
+            _userName = Data.Settings.Instance.UserName;
+            _lastApplicationCrashTime = Data.Settings.Instance.LastAppCrash;
+            _crashCounter = Data.Settings.Instance.Counter;
         }
 
         /// <summary>
@@ -56,8 +56,8 @@ namespace FlaxCrashReport.Logic
 
         private void UpdateSettingsCrashTimeAndCounter()
         {
-            Data.Settings.LastAppCrash = _eventLogs.Max(m => m.TimeWritten);
-            Data.Settings.Counter = _crashCounter;
+            Data.Settings.Instance.LastAppCrash = _eventLogs.Max(m => m.TimeWritten);
+            Data.Settings.Instance.Counter = _crashCounter;
         }
 
 
@@ -74,7 +74,7 @@ namespace FlaxCrashReport.Logic
 
                 var serializerSettings = new JsonSerializerSettings{ ContractResolver = new CamelCasePropertyNamesContractResolver() };
                 var json = JsonConvert.SerializeObject(oCrash, serializerSettings);
-                string newreport = $"{Data.Settings.ReportsPath}\\Report_{e.TimeWritten.ToString("yyyyMMddHHmmss")}.json";
+                string newreport = $"{Data.Settings.Instance.ReportsPath}\\Report_{e.TimeWritten.ToString("yyyyMMddHHmmss")}.json";
 
                 File.WriteAllText(newreport, json);
             }
@@ -91,12 +91,12 @@ namespace FlaxCrashReport.Logic
             {
                 Category = ele.Category.ToString(),
                 EntityType = ele.EntryType.ToString(),
-                MachineName = ele.MachineName,
+                MachineName = _machineName,
                 Message = ele.Message.ToString(),
                 Source = ele.Source.ToString(),
                 TimeGenerated = ele.TimeGenerated,
                 TimeWritten = ele.TimeWritten,
-                UserName = ele.UserName,
+                UserName = _userName,
                 CrashCounter = ++_crashCounter
             };
         }
