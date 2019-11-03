@@ -29,8 +29,10 @@ namespace FlaxCrashReport.Logic
                     oEmailProcess.ProcessAndSendEmails();
                 }
 
-                //ProcessCrashData();
-                //CheckForServiceStatus();
+                //UPDATE JSON FILE FROM SETTINGS
+                //MOVE ZIP FILES TO ARCHIVE
+                //DELETE JSONs
+
             }
             catch (Exception ex)
             {
@@ -40,62 +42,6 @@ namespace FlaxCrashReport.Logic
 
 
 
-        /// <summary>
-        /// Send email to main FCR email, each function call is in new thread to speed the process
-        /// Tupe parameters:
-        /// Item1 => Subject string
-        /// Item2 => Body string
-        /// Item3 => Date DateTime
-        /// Item4 => Path string (filepath for attachment)
-        /// </summary>
-        /// <param name="t"></param>
-        public static void SendEmail(Tuple<string, string, DateTime, string> t)
-        {
-            new System.Threading.Thread(() =>
-            {
-                string from = Data.Settings.Instance.Settings.EmailFrom.Trim();
-                string to = Data.Settings.Instance.Settings.EmailTo.Trim();
-                string password = Data.Settings.Instance.Settings.Password.Trim();
-                if (from == "" || to == "" || password == "") return;
-
-                string body = $"Crash time: {t.Item3.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                                $"Machine: {Data.Settings.Instance.Settings.MachineName} {Environment.NewLine}" +
-                                $"Username: {Data.Settings.Instance.Settings.UserName} {Environment.NewLine}" +
-                                $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
-                                $"{t.Item2} {Environment.NewLine}" +
-                                $"------------------ LOG DATA ------------------";
-
-                var smtp = new SmtpClient
-                {
-                    Host = "smtp.gmail.com",
-                    Port = 587,
-                    EnableSsl = true,
-                    DeliveryMethod = SmtpDeliveryMethod.Network,
-                    UseDefaultCredentials = false,
-                    Credentials = new NetworkCredential(new MailAddress(from, "FCR Service").Address, password)
-
-                };
-
-
-                using (var message = new MailMessage(new MailAddress(from, "FCR Service"), new MailAddress(to, "FCR Report Center"))
-                {
-                    Subject = t.Item1,
-                    Body = body,
-                    Priority = MailPriority.High
-                })
-                {
-                    if (File.Exists(t.Item4)) message.Attachments.Add(new Attachment(t.Item4));
-                    smtp.Send(message);
-                    if (t.Item1 == "FCR_OK") UpdateSettingsJSON(Tuple.Create(0, (DateTime?)null, (DateTime?)null, (DateTime?)null, (DateTime?)DateTime.Now));
-                }
-                if (File.Exists(t.Item4)) MoveToArchive(t.Item4);
-            }).Start();
-
-        }
-
-       
-
-    
 
         internal static void CheckForServiceStatus()
         {
@@ -126,7 +72,7 @@ namespace FlaxCrashReport.Logic
                     JObject o1 = JObject.Parse(File.ReadAllText(filepath));
                     jd = JsonConvert.DeserializeObject<Data.Crash>(o1.ToString());
                 }
-               
+
 
                 jd.MachineName = Data.Settings.Instance.Settings.MachineName;
                 jd.UserName = Data.Settings.Instance.Settings.UserName;
@@ -149,12 +95,12 @@ namespace FlaxCrashReport.Logic
                 // To prevent infinite loops and email spamming
                 // Information (crash) will be lost here
             }
-           
+
         }
 
-       
 
-       
+
+
 
         /// <summary>
         /// Moves file to archive (C:\FLAX\Services\FCR\Archive\)
@@ -180,19 +126,12 @@ namespace FlaxCrashReport.Logic
         /// <param name="t"></param>
         private static void UpdateSettingsJSON(Tuple<int, DateTime?, DateTime?, DateTime?, DateTime?> t)
         {
-            Data.Setting gs = Data.Settings.Instance.Settings;
 
-            gs.Counter += t.Item1;
-            gs.LastServiceCrash = t.Item2 ?? gs.LastServiceCrash;
-            gs.LastAppCrash = t.Item3 ?? gs.LastAppCrash;
-            gs.LastFlaxCrash = t.Item4 ?? gs.LastFlaxCrash;
-            gs.LastOKStatus = t.Item5 ?? gs.LastOKStatus;
-
-            var json = JsonConvert.SerializeObject(gs, Formatting.Indented);
+            var json = JsonConvert.SerializeObject(Data.Settings, Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);
 
         }
 
-
+    }
         
 }

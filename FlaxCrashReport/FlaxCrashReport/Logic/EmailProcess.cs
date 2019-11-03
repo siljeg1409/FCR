@@ -5,12 +5,9 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.IO.Compression;
-using System.Linq;
 using System.Net;
 using System.Net.Mail;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace FlaxCrashReport.Logic
 {
@@ -21,10 +18,6 @@ namespace FlaxCrashReport.Logic
         private SafeHandle handle = new SafeFileHandle(IntPtr.Zero, true);
         private List<Data.Email> _emails;
         #endregion
-
-
-
-       
 
         internal void ProcessAndSendEmails()
         {
@@ -68,27 +61,8 @@ namespace FlaxCrashReport.Logic
                     })
                     {
                         smtp.Send(message);
-                        //if (t.Item1 == "FCR_OK") UpdateSettingsJSON(Tuple.Create(0, (DateTime?)null, (DateTime?)null, (DateTime?)null, (DateTime?)DateTime.Now));
                     }
-                    //if (File.Exists(t.Item4)) MoveToArchive(t.Item4);
                 }
-
-
-                //string from = Data.SGeneral.Instance.Settings.EmailFrom.Trim();
-                //string to = Data.SGeneral.Instance.Settings.EmailTo.Trim();
-                //string password = Data.SGeneral.Instance.Settings.Password.Trim();
-                //if (from == "" || to == "" || password == "") return;
-
-                //string body = $"Crash time: {t.Item3.ToString("dd.MM.yyyy HH:mm:ss")} {Environment.NewLine}" +
-                //                $"Machine: {Data.SGeneral.Instance.Settings.MachineName} {Environment.NewLine}" +
-                //                $"Username: {Data.SGeneral.Instance.Settings.UserName} {Environment.NewLine}" +
-                //                $"------------------ LOG DATA ------------------ {Environment.NewLine}" +
-                //                $"{t.Item2} {Environment.NewLine}" +
-                //                $"------------------ LOG DATA ------------------";
-
-               
-
-
           
             }).Start();
         }
@@ -100,8 +74,11 @@ namespace FlaxCrashReport.Logic
 
             return new Data.Email
             {
-                EmailSubject = "",
-                EmailBody = "",
+                EmailSubject = $"{EmailSubjectStatus.CRASH_REPORT.ToString()} : {s.CrashCounter}",
+                EmailBody = $"Crash time: {s.TimeWritten}{Environment.NewLine}" +
+                            $"Machine: {s.MachineName}{Environment.NewLine}" +
+                            $"User: {s.UserName}{Environment.NewLine}" +
+                            $"Detailed information in attachment.",
                 EmailAttachment = new Attachment(ZipJSOINFile(filePath)),
                 JSONPath = filePath
             };
@@ -135,6 +112,13 @@ namespace FlaxCrashReport.Logic
             _disposed = true;
         }
 
-
+        private enum EmailSubjectStatus
+        {
+            CRASH_REPORT = 0, //will use just this enum for now, the rest is coming soon
+            FCR_OK = 1,
+            FCR_CRASH_REPORT = 2,
+            FCR_STARTED = 3,
+            FCR_STOPPED = 4
+        }
     }
 }
