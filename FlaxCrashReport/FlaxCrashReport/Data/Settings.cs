@@ -13,7 +13,6 @@ namespace FlaxCrashReport.Data
     /// </summary>
     public sealed class Settings
     {
-
         #region Private members
         private static int _counter;
         private static int _intevalMinutes;
@@ -25,9 +24,9 @@ namespace FlaxCrashReport.Data
         private static DateTime _lastappcrash;
         private static string _reportspath;
         private static string _archivepath;
-        private static List<string> _filesForArchive;
         #endregion
 
+        #region JSON properties
         [JsonProperty("fcr_emailfrom")]
         public string EmailFrom
         {
@@ -157,18 +156,7 @@ namespace FlaxCrashReport.Data
                 }
             }
         }
-
-        public List<string> FilesForArchive
-        {
-            get { return _filesForArchive; }
-            set
-            {
-                if (value != _filesForArchive)
-                {
-                    _filesForArchive = value;
-                }
-            }
-        }
+        #endregion
 
 
         Settings()
@@ -195,6 +183,9 @@ namespace FlaxCrashReport.Data
                 return instance;
             }
         }
+
+     
+
 
         /// <summary>
         /// Reads GlobalSettigns.json file

@@ -10,7 +10,7 @@ namespace FlaxCrashReport.Enumerations
     {
         public enum EmailSubjectStatus
         {
-            CRASH_REPORT = 0, //will use just this enum for now, the rest is coming soon
+            CRASH_REPORT = 0,
             FCR_OK = 1,
             FCR_CRASH_REPORT = 2,
             FCR_STARTED = 3,

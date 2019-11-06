@@ -5,6 +5,13 @@ namespace FlaxCrashReport
 {
     public partial class Main : ServiceBase
     {
+
+        // TODO:
+        // NEED TO IMPLEMENT SETTINGS BETTER
+        // ADD MORE ENUMERATIONS?
+        // READ MORE OF "CLEAN CODE" BOOK AND IMPLEMENT IT HERE
+
+
         Timer timer = new Timer();
 
         /// <summary>
