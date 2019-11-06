@@ -47,11 +47,11 @@ namespace FlaxCrashReport.Logic
         {
             //new System.Threading.Thread(() =>
             //{
-            foreach (Data.Email email in _emails)
-            {
-                SendEmail(email);
-                //_emails.Remove(email);
-            }
+                foreach (Data.Email email in _emails)
+                {
+                    SendEmail(email);
+                    MoveAndCleanFiles(email.JSONFilePath, email.ZippedFilePath);
+                }
             //}).Start();
         }
 
@@ -83,6 +83,7 @@ namespace FlaxCrashReport.Logic
                 }
                 _smtp.Send(message);
             }
+
         }
         private Data.Email GenerateEmail(string filePath)
         {
@@ -91,16 +92,18 @@ namespace FlaxCrashReport.Logic
 
             return new Data.Email
             {
-                EmailSubject = $"{Enumerations.EStatus.EmailSubjectStatus.CRASH_REPORT.ToString()} : {s.CrashCounter}",
+                EmailSubject = $"{Enumerations.EStatus.EmailSubjectStatus.CRASH_REPORT.ToString()} : {++Data.Settings.Instance.Counter}",
                 EmailBody = $"Crash time: {s.TimeWritten}{Environment.NewLine}" +
                             $"Machine: {s.MachineName}{Environment.NewLine}" +
                             $"User: {s.UserName}{Environment.NewLine}" +
                             $"Detailed information in attachment.",
-                EmailAttachment = new Attachment(ZipJSOINFile(filePath))
-            };
+                EmailAttachment = new Attachment(GetZippedJSONFile(filePath)),
+                JSONFilePath = filePath,
+                ZippedFilePath = Path.ChangeExtension(filePath, ".zip")
+        };
         }
 
-        private string ZipJSOINFile(string sourceFileName)
+        private string GetZippedJSONFile(string sourceFileName)
         {
             string zipFile = Path.ChangeExtension(sourceFileName, ".zip");
             if (File.Exists(zipFile)) return zipFile;
@@ -110,6 +113,20 @@ namespace FlaxCrashReport.Logic
             }
             return zipFile;
         }
+
+        /// <summary>
+        /// Moves file to archive (C:\FLAX\Services\FCR\Archive\)
+        /// If file exists it will be overwriten
+        /// </summary>
+        /// <param name="file">Path of the file to be moved to archive</param>
+        private static void MoveAndCleanFiles(string JSONFilePath, string ZippedFilePath)
+        {
+            string tmpFile = Data.Settings.Instance.ArchivePath + @"\" + Path.GetFileName(ZippedFilePath);
+            if (File.Exists(tmpFile)) File.Delete(tmpFile);
+            File.Move(ZippedFilePath, tmpFile);
+            File.Delete(JSONFilePath);
+        }
+
 
         public void Dispose()
         {

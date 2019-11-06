@@ -18,7 +18,6 @@ namespace FlaxCrashReport.Data
         private DateTime timeGenerated;
         private DateTime timeWritten;
         private string userName;
-        private int crashCounter;
         #endregion
 
         public string Category
@@ -117,16 +116,5 @@ namespace FlaxCrashReport.Data
             }
         }
 
-        public int CrashCounter
-        {
-            get { return crashCounter; }
-            set
-            {
-                if (value != crashCounter)
-                {
-                    crashCounter = value;
-                }
-            }
-        }
     }
 }

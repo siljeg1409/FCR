@@ -1,13 +1,8 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
 using System;
-using System.Diagnostics;
 using System.IO;
-using System.Net;
-using System.Net.Mail;
-using System.Linq;
-using Newtonsoft.Json.Linq;
-using System.Collections.Generic;
+
 
 namespace FlaxCrashReport.Logic
 {
@@ -29,12 +24,7 @@ namespace FlaxCrashReport.Logic
                     oEmailProcess.ProcessAndSendEmails();
                 }
 
-                //THIS WILL ONLY EXECUTE IF ALL JSON FILES ARE SEND VIA EMAIL
-                //UPDATE JSON FILE FROM SETTINGS
-                //MOVE ZIP FILES TO ARCHIVE 
-                //DELETE JSONs
-                //SEND JSON OK STATUS
-
+                UpdateSettingsJSON();
             }
             catch (Exception ex)
             {
@@ -42,6 +32,7 @@ namespace FlaxCrashReport.Logic
             }
         }
 
+        #region FCR crash handler
         public static void CreateAndSendFCREmail(string message, Enumerations.EStatus.EmailSubjectStatus subjectStatus)
         {
             try
@@ -88,8 +79,7 @@ namespace FlaxCrashReport.Logic
                     Source = "FlaxCrashReport",
                     TimeGenerated = DateTime.Now,
                     TimeWritten = DateTime.Now,
-                    UserName = Data.Settings.Instance.UserName,
-                    CrashCounter = ++Data.Settings.Instance.Counter
+                    UserName = Data.Settings.Instance.UserName
                 };
 
                 var serializerSettings = new JsonSerializerSettings
@@ -107,22 +97,7 @@ namespace FlaxCrashReport.Logic
             }
 
         }
-
-
-
-
-
-        /// <summary>
-        /// Moves file to archive (C:\FLAX\Services\FCR\Archive\)
-        /// If file exists it will be overwriten
-        /// </summary>
-        /// <param name="file">Path of the file to be moved to archive</param>
-        private static void MoveToArchive(string file)
-        {
-            string tmpFile = Data.Settings.Instance.ArchivePath + @"\" + Path.GetFileName(file);
-            if (File.Exists(tmpFile)) File.Delete(tmpFile);
-            File.Move(file, tmpFile);
-        }
+        #endregion
 
         /// <summary>
         /// Update global json and singleton class (SGeneral) with new data
@@ -134,7 +109,7 @@ namespace FlaxCrashReport.Logic
         /// Item5 => LastOKStatus DateTime?
         /// </summary>
         /// <param name="t"></param>
-        private static void UpdateSettingsJSON(Tuple<int, DateTime?, DateTime?, DateTime?, DateTime?> t)
+        private static void UpdateSettingsJSON()
         {
             var json = JsonConvert.SerializeObject(Data.Settings.Instance, Formatting.Indented);
             File.WriteAllText(@"C:\FLAX\Settings\GlobalSettings.json", json);

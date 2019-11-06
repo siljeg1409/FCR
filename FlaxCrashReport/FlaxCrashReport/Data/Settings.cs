@@ -1,6 +1,7 @@
 ﻿using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using System;
+using System.Collections.Generic;
 using System.IO;
 
 namespace FlaxCrashReport.Data
@@ -24,6 +25,7 @@ namespace FlaxCrashReport.Data
         private static DateTime _lastappcrash;
         private static string _reportspath;
         private static string _archivepath;
+        private static List<string> _filesForArchive;
         #endregion
 
         [JsonProperty("fcr_emailfrom")]
@@ -152,6 +154,18 @@ namespace FlaxCrashReport.Data
                 if (value != _archivepath)
                 {
                     _archivepath = value;
+                }
+            }
+        }
+
+        public List<string> FilesForArchive
+        {
+            get { return _filesForArchive; }
+            set
+            {
+                if (value != _filesForArchive)
+                {
+                    _filesForArchive = value;
                 }
             }
         }

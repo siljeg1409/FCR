@@ -19,7 +19,6 @@ namespace FlaxCrashReport.Logic
         private DateTime _lastApplicationCrashTime;
         private string _machineName;
         private string _userName;
-        private int _crashCounter;
         #endregion
 
         public CrashProcess()
@@ -27,7 +26,6 @@ namespace FlaxCrashReport.Logic
             _machineName = Data.Settings.Instance.MachineName;
             _userName = Data.Settings.Instance.UserName;
             _lastApplicationCrashTime = Data.Settings.Instance.LastAppCrash;
-            _crashCounter = Data.Settings.Instance.Counter;
         }
 
         /// <summary>
@@ -39,7 +37,7 @@ namespace FlaxCrashReport.Logic
             _eventLogs = GetEventLogs();
             if (_eventLogs == null || _eventLogs.Count() < 1) return;
             GenerateJSONFiles();
-            UpdateSettingsCrashTimeAndCounter();
+            UpdateSettingsCrashTime();
 
         }
 
@@ -54,10 +52,9 @@ namespace FlaxCrashReport.Logic
                          select elog).ToList();
         }
 
-        private void UpdateSettingsCrashTimeAndCounter()
+        private void UpdateSettingsCrashTime()
         {
             Data.Settings.Instance.LastAppCrash = _eventLogs.Max(m => m.TimeWritten);
-            Data.Settings.Instance.Counter = _crashCounter;
         }
 
 
@@ -96,8 +93,7 @@ namespace FlaxCrashReport.Logic
                 Source = ele.Source.ToString(),
                 TimeGenerated = ele.TimeGenerated,
                 TimeWritten = ele.TimeWritten,
-                UserName = _userName,
-                CrashCounter = ++_crashCounter
+                UserName = _userName
             };
         }
 
